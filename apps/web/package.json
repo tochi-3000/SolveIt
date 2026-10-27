@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@solvam/shared-types": "workspace:*",
+    "@solvam/shared-types": "*",
     "clsx": "^2.1.1",
     "katex": "^0.16.11",
     "lucide-react": "^0.453.0",
