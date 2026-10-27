@@ -3,23 +3,26 @@
 import React, { useState, useEffect } from 'react';
 import MathDisplay from '@/components/MathDisplay';
 import CameraBridgeModal from '@/components/CameraBridgeModal';
+import TelemetryHud from '@/components/TelemetryHud';
 import { SolveResponse, VerifyStepsResponse, GenerateTwinResponse } from '@solvam/shared-types';
+import { PedagogicalSolution, TelemetryEvent, PedagogicalLevel, LanguageMode } from '@/lib/ai/types';
 import { 
   Calculator, 
   CheckCircle2, 
   XCircle, 
   Sparkles, 
-  Activity, 
   Award, 
-  ArrowRight,
-  ShieldCheck,
-  RefreshCw,
-  Cpu,
-  Smartphone,
-  Coins,
-  User,
-  Camera,
-  Image as ImageIcon
+  ArrowRight, 
+  ShieldCheck, 
+  RefreshCw, 
+  Cpu, 
+  Smartphone, 
+  Coins, 
+  BookOpen,
+  Volume2,
+  AlertTriangle,
+  Layers,
+  Globe2
 } from 'lucide-react';
 
 interface UserProfile {
@@ -37,11 +40,18 @@ export default function HomePage() {
   // User Profile & Credits
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // QR Camera Bridge Modal State
+  // QR Camera Bridge State
   const [isCameraModalOpen, setIsCameraModalOpen] = useState<boolean>(false);
   const [beamedPhoto, setBeamedPhoto] = useState<string | null>(null);
 
-  // Section 1: Solve State
+  // Multimodal Vision + Tool-Calling State (Phase 2b)
+  const [pedagogicalLevel, setPedagogicalLevel] = useState<PedagogicalLevel>('intermediate');
+  const [languageMode, setLanguageMode] = useState<LanguageMode>('standard');
+  const [aiSolution, setAiSolution] = useState<PedagogicalSolution | null>(null);
+  const [telemetry, setTelemetry] = useState<TelemetryEvent | null>(null);
+  const [transcribeLoading, setTranscribeLoading] = useState<boolean>(false);
+
+  // Section 1: Deterministic Solver State
   const [equationInput, setEquationInput] = useState<string>('2x^2 + 5x - 3 = 0');
   const [solveResult, setSolveResult] = useState<SolveResponse | null>(null);
   const [solveLoading, setSolveLoading] = useState<boolean>(false);
@@ -57,14 +67,9 @@ export default function HomePage() {
   const [verifyResult, setVerifyResult] = useState<VerifyStepsResponse | null>(null);
   const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
 
-  // Section 3: Twin Generator State
-  const [twinResult, setTwinResult] = useState<GenerateTwinResponse | null>(null);
-  const [twinLoading, setTwinLoading] = useState<boolean>(false);
-
   // Check Engine Health & Fetch User Profile on Load
   useEffect(() => {
     async function initPage() {
-      // 1. Health check to python symbolic engine
       const start = performance.now();
       try {
         const res = await fetch('http://localhost:8000/health');
@@ -78,7 +83,6 @@ export default function HomePage() {
         setEngineStatus('offline');
       }
 
-      // 2. Fetch User / Guest Profile
       try {
         const userRes = await fetch('/api/user/me');
         if (userRes.ok) {
@@ -96,11 +100,42 @@ export default function HomePage() {
   // Handle Photo Beamed from Mobile via Native SSE
   const handlePhotoReceived = (base64Image: string) => {
     setBeamedPhoto(base64Image);
-    // Automatically trigger solve with sample or OCR
-    setEquationInput('2x^2 + 5x - 3 = 0');
+    runMultimodalSolve(base64Image);
   };
 
-  // Handle Solve
+  // Run Meta Muse Spark Multimodal Transcription + Tool Loop
+  const runMultimodalSolve = async (imageData: string) => {
+    setTranscribeLoading(true);
+    try {
+      const res = await fetch('/api/math/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: imageData,
+          pedagogicalLevel,
+          languageMode,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setAiSolution(data.solution);
+        setTelemetry(data.telemetry);
+        if (data.solution.extractedLatex) {
+          setEquationInput(data.solution.extractedLatex);
+        }
+        if (userProfile && userProfile.credits > 0) {
+          setUserProfile({ ...userProfile, credits: userProfile.credits - 1 });
+        }
+      }
+    } catch (e) {
+      console.error('Multimodal solve failed:', e);
+    } finally {
+      setTranscribeLoading(false);
+    }
+  };
+
+  // Handle Manual Solve
   const handleSolve = async () => {
     setSolveLoading(true);
     const start = performance.now();
@@ -114,7 +149,6 @@ export default function HomePage() {
       setSolveResult(data);
       setSolveLatency(Math.round(performance.now() - start));
 
-      // Refresh credits
       if (userProfile && userProfile.credits > 0) {
         setUserProfile({ ...userProfile, credits: userProfile.credits - 1 });
       }
@@ -147,31 +181,20 @@ export default function HomePage() {
     }
   };
 
-  // Handle Twin Generation
-  const handleGenerateTwin = async () => {
-    setTwinLoading(true);
-    try {
-      const res = await fetch('/api/generate-twin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          equation: equationInput,
-          topic: 'Quadratic Equations'
-        })
-      });
-      const data = await res.json();
-      setTwinResult(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setTwinLoading(false);
+  // Audio Speech Synthesis for any step
+  const speakStep = (text: string) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      window.speechSynthesis.speak(utterance);
     }
   };
 
   const injectMistake = () => {
     setStudentSteps([
       '2x^2 + 6x - x - 3 = 0',
-      '2x^2 + 6x + x - 3 = 0', // Sign error (+x instead of -x)
+      '2x^2 + 6x + x - 3 = 0',
       '(2x - 1)(x + 3) = 0'
     ]);
   };
@@ -193,21 +216,20 @@ export default function HomePage() {
             <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
               Meta Hackathon 2026 — Track 1
             </span>
-            <span className="px-2.5 py-1 text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-full">
-              Phase 2a: Auth & QR Camera
+            <span className="px-2.5 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-full">
+              Phase 2b: Muse Spark Tool Loop
             </span>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight mt-2 text-white flex items-center gap-2">
             SolvAm <span className="text-emerald-400">Core</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Neuro-Symbolic Math Engine & WAEC Rubric Diagnostic Verifier
+            Neuro-Symbolic Math Tutor & WAEC Rubric Diagnostic Verifier
           </p>
         </div>
 
         {/* Right Badges: QR Camera Trigger + Credits + SymPy Health */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Scan from Phone Button (The QR Bridge!) */}
           <button
             type="button"
             onClick={() => setIsCameraModalOpen(true)}
@@ -217,53 +239,153 @@ export default function HomePage() {
             <span>Scan with Phone (QR)</span>
           </button>
 
-          {/* User Credits Badge */}
           <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs">
             <Coins className="w-4 h-4 text-amber-400" />
             <span className="font-semibold text-white">{userProfile ? userProfile.credits : 50}</span>
             <span className="text-slate-400 text-[10px] uppercase font-bold">Credits</span>
           </div>
 
-          {/* Engine Health Badge */}
           <div className="flex items-center gap-2.5 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs">
             <Cpu className="w-4 h-4 text-emerald-400" />
             <span className={`inline-block w-2 h-2 rounded-full ${engineStatus === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
             <span className={engineStatus === 'online' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
               {engineStatus.toUpperCase()}
             </span>
-            {engineLatency && (
-              <span className="text-slate-400 text-[10px]">({engineLatency}ms)</span>
-            )}
           </div>
         </div>
       </header>
 
-      {/* Beamed Mobile Photo Banner (If photo received via QR Bridge) */}
-      {beamedPhoto && (
-        <div className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl overflow-hidden border border-emerald-500/40 bg-slate-950 flex-shrink-0">
-              <img src={beamedPhoto} alt="Beamed from Phone" className="w-full h-full object-cover" />
-            </div>
+      {/* Scaffolding & Language Controls */}
+      <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Scaffolding Level:</span>
+          </span>
+          <div className="flex gap-1.5">
+            {(['beginner', 'intermediate', 'expert'] as PedagogicalLevel[]).map((lvl) => (
+              <button
+                key={lvl}
+                onClick={() => setPedagogicalLevel(lvl)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition ${
+                  pedagogicalLevel === lvl
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {lvl}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Globe2 className="w-3.5 h-3.5 text-amber-400" />
+            <span>Language Mode:</span>
+          </span>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setLanguageMode('standard')}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                languageMode === 'standard'
+                  ? 'bg-amber-600 text-white shadow-md'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              Standard English
+            </button>
+            <button
+              onClick={() => setLanguageMode('pidgin')}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                languageMode === 'pidgin'
+                  ? 'bg-amber-600 text-white shadow-md'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              Nigerian Pidgin 🇳🇬
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Multimodal AI Solution Display (Phase 2b Feature) */}
+      {aiSolution && (
+        <section className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 shadow-2xl space-y-6 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
             <div>
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Photo Beamed from Mobile Phone!</span>
+                <Sparkles className="w-4 h-4" />
+                <span>Meta Muse Spark 1.3 Adaptive Breakdown</span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Image captured via Native SSE stream. Ready for SAM 3.1 perception and solving.
-              </p>
+              <h2 className="text-2xl font-black text-white mt-1">{aiSolution.topic}</h2>
+              <p className="text-xs text-slate-400 mt-1">{aiSolution.discriminantSummary}</p>
+            </div>
+
+            <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800 text-center">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Verified Answer</span>
+              <MathDisplay value={aiSolution.finalAnswerLatex} className="text-emerald-400 font-bold text-lg" />
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleSolve}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md flex-shrink-0"
-          >
-            <span>Solve Beamed Problem</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+
+          {/* Steps List */}
+          <div className="space-y-4">
+            {aiSolution.steps.map((st) => (
+              <div key={st.stepNumber} className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold flex items-center justify-center">
+                      {st.stepNumber}
+                    </span>
+                    <span className="text-sm font-semibold text-slate-200">{st.explanation}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {st.audioNarration && (
+                      <button
+                        onClick={() => speakStep(st.audioNarration!)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                        title="Read aloud"
+                      >
+                        <Volume2 className="w-4 h-4 text-emerald-400" />
+                      </button>
+                    )}
+                    <span className="px-2 py-0.5 rounded text-xs font-mono font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      {st.waecMark}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-900/60 rounded-xl text-center">
+                  <MathDisplay value={st.mathLatex} displayMode className="text-white font-medium" />
+                </div>
+
+                {st.commonPitfall && (
+                  <div className="flex items-center gap-2 text-xs text-amber-300/90 bg-amber-950/30 p-2.5 rounded-xl border border-amber-800/30">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-400" />
+                    <span><strong>Examiner's Warning:</strong> {st.commonPitfall}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Generated Twin Problem */}
+          {aiSolution.twinPracticeProblem && (
+            <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl space-y-2">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Practice Twin Question (Ready for Student Solve):</span>
+              </span>
+              <div className="p-2 bg-slate-950 rounded-xl text-center">
+                <MathDisplay value={aiSolution.twinPracticeProblem.twin_equation_latex} displayMode className="text-white font-bold" />
+              </div>
+            </div>
+          )}
+
+          {/* Telemetry HUD */}
+          <TelemetryHud telemetry={telemetry} />
+        </section>
       )}
 
       {/* Grid Layout: Solver & Twin Generator */}
@@ -296,12 +418,10 @@ export default function HomePage() {
                 />
               </div>
 
-              {/* KaTeX Live Preview */}
               <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-center min-h-[48px] flex items-center justify-center">
                 <MathDisplay value={equationInput} displayMode />
               </div>
 
-              {/* Quick Sample Buttons */}
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="text-slate-400 self-center">WAEC Samples:</span>
                 <button
@@ -346,7 +466,6 @@ export default function HomePage() {
               )}
             </button>
 
-            {/* Solve Output Card */}
             {solveResult && (
               <div className="mt-4 p-4 bg-slate-950 rounded-xl border border-emerald-500/30 space-y-2 animate-fadeIn">
                 <div className="flex items-center justify-between text-xs text-slate-400">
@@ -376,65 +495,46 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Section 2: Parametric Twin Problem Generator */}
+        {/* Section 2: One-Click AI Trigger Demo */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-400" />
-                Parametric Twin Generator
+                <Sparkles className="w-5 h-5 text-emerald-400" />
+                Meta Muse Spark Tool-Loop Test
               </h2>
-              <span className="text-xs font-mono text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/40">
-                Integer Roots Only
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
+                Phase 2b Live
               </span>
             </div>
 
             <p className="text-xs text-slate-400 mb-4">
-              Ports your parameter randomizer from <code className="text-emerald-400">exam-intelligence-engine</code>. Generates mathematically verified twin practice questions.
+              Test the full Multimodal Perception + SymPy Tool Calling loop using a sample WAEC question photo.
             </p>
 
             <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
-              <div className="text-xs text-slate-400">Target Concept:</div>
+              <div className="text-xs text-slate-400">Active Test Target:</div>
               <div className="text-sm font-semibold text-white">WAEC Standard Quadratic Scaffolding</div>
-              <div className="text-xs text-slate-400">Guarantees: Non-zero coefficients, distinct integer roots, clean factoring.</div>
+              <div className="text-xs text-slate-400">Triggers: Multimodal Vision &rarr; SymPy Tool &rarr; WAEC M1/A1 Marks &rarr; Practice Twin.</div>
             </div>
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-800">
             <button
               type="button"
-              onClick={handleGenerateTwin}
-              disabled={twinLoading}
-              className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-900/30 disabled:opacity-50"
+              onClick={() => runMultimodalSolve('mockBase64ImageData')}
+              disabled={transcribeLoading}
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 disabled:opacity-50"
             >
-              {twinLoading ? (
+              {transcribeLoading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <span>Generate Verified Practice Twin</span>
+                  <span>Trigger Meta Muse Spark Pipeline</span>
                   <Sparkles className="w-4 h-4" />
                 </>
               )}
             </button>
-
-            {twinResult && (
-              <div className="mt-4 p-4 bg-slate-950 rounded-xl border border-amber-500/30 space-y-3 animate-fadeIn">
-                <div className="text-xs text-amber-400 font-semibold">Generated Twin Question:</div>
-                <div className="p-2 bg-slate-900 rounded-lg text-center">
-                  <MathDisplay value={twinResult.twin_equation_latex} displayMode className="text-white font-bold" />
-                </div>
-
-                <div className="text-xs text-slate-400">Verified Answer:</div>
-                <MathDisplay value={twinResult.correct_answer_latex} className="text-emerald-400 font-medium" />
-
-                <div className="text-xs text-slate-400">Verification Steps:</div>
-                <ul className="text-xs text-slate-300 space-y-1 list-disc list-inside">
-                  {twinResult.solution_steps.map((st, i) => (
-                    <li key={i}>{st}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -511,7 +611,6 @@ export default function HomePage() {
           )}
         </button>
 
-        {/* Verification Report */}
         {verifyResult && (
           <div className="mt-6 p-6 bg-slate-950 rounded-2xl border border-slate-800 space-y-4 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
@@ -532,7 +631,6 @@ export default function HomePage() {
                 <p className="text-xs text-slate-400 mt-1">{verifyResult.pedagogical_summary}</p>
               </div>
 
-              {/* WAEC Score Badge */}
               <div className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-center">
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">WAEC Marks Earned</div>
                 <div className="text-2xl font-extrabold text-emerald-400">
@@ -541,7 +639,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Line by line breakdown */}
             <div className="space-y-2">
               {verifyResult.step_analyses.map((sa) => (
                 <div
