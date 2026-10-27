@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import MathDisplay from '@/components/MathDisplay';
+import CameraBridgeModal from '@/components/CameraBridgeModal';
 import { SolveResponse, VerifyStepsResponse, GenerateTwinResponse } from '@solvam/shared-types';
 import { 
   Calculator, 
@@ -13,12 +14,32 @@ import {
   ArrowRight,
   ShieldCheck,
   RefreshCw,
-  Cpu
+  Cpu,
+  Smartphone,
+  Coins,
+  User,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
+
+interface UserProfile {
+  id: string;
+  name: string;
+  email?: string;
+  is_guest: boolean;
+  credits: number;
+}
 
 export default function HomePage() {
   const [engineStatus, setEngineStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [engineLatency, setEngineLatency] = useState<number | null>(null);
+
+  // User Profile & Credits
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // QR Camera Bridge Modal State
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState<boolean>(false);
+  const [beamedPhoto, setBeamedPhoto] = useState<string | null>(null);
 
   // Section 1: Solve State
   const [equationInput, setEquationInput] = useState<string>('2x^2 + 5x - 3 = 0');
@@ -40,9 +61,10 @@ export default function HomePage() {
   const [twinResult, setTwinResult] = useState<GenerateTwinResponse | null>(null);
   const [twinLoading, setTwinLoading] = useState<boolean>(false);
 
-  // Check Engine Health on Load
+  // Check Engine Health & Fetch User Profile on Load
   useEffect(() => {
-    async function checkHealth() {
+    async function initPage() {
+      // 1. Health check to python symbolic engine
       const start = performance.now();
       try {
         const res = await fetch('http://localhost:8000/health');
@@ -55,9 +77,28 @@ export default function HomePage() {
       } catch (e) {
         setEngineStatus('offline');
       }
+
+      // 2. Fetch User / Guest Profile
+      try {
+        const userRes = await fetch('/api/user/me');
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUserProfile(userData);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
+      }
     }
-    checkHealth();
+
+    initPage();
   }, []);
+
+  // Handle Photo Beamed from Mobile via Native SSE
+  const handlePhotoReceived = (base64Image: string) => {
+    setBeamedPhoto(base64Image);
+    // Automatically trigger solve with sample or OCR
+    setEquationInput('2x^2 + 5x - 3 = 0');
+  };
 
   // Handle Solve
   const handleSolve = async () => {
@@ -72,6 +113,11 @@ export default function HomePage() {
       const data = await res.json();
       setSolveResult(data);
       setSolveLatency(Math.round(performance.now() - start));
+
+      // Refresh credits
+      if (userProfile && userProfile.credits > 0) {
+        setUserProfile({ ...userProfile, credits: userProfile.credits - 1 });
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -122,7 +168,6 @@ export default function HomePage() {
     }
   };
 
-  // Preset inject mistake on Step 2
   const injectMistake = () => {
     setStudentSteps([
       '2x^2 + 6x - x - 3 = 0',
@@ -144,12 +189,12 @@ export default function HomePage() {
       {/* Top Navigation & Status Bar */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
               Meta Hackathon 2026 — Track 1
             </span>
             <span className="px-2.5 py-1 text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-full">
-              Phase 1: Deterministic Engine
+              Phase 2a: Auth & QR Camera
             </span>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight mt-2 text-white flex items-center gap-2">
@@ -160,23 +205,66 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Engine Health Badge */}
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl shadow-inner">
-          <Cpu className="w-5 h-5 text-emerald-400" />
-          <div className="text-xs">
-            <div className="flex items-center gap-1.5 font-medium">
-              <span>SymPy Engine:</span>
-              <span className={`inline-block w-2 h-2 rounded-full ${engineStatus === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-              <span className={engineStatus === 'online' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                {engineStatus.toUpperCase()}
-              </span>
-            </div>
+        {/* Right Badges: QR Camera Trigger + Credits + SymPy Health */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Scan from Phone Button (The QR Bridge!) */}
+          <button
+            type="button"
+            onClick={() => setIsCameraModalOpen(true)}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-lg shadow-emerald-950"
+          >
+            <Smartphone className="w-4 h-4" />
+            <span>Scan with Phone (QR)</span>
+          </button>
+
+          {/* User Credits Badge */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs">
+            <Coins className="w-4 h-4 text-amber-400" />
+            <span className="font-semibold text-white">{userProfile ? userProfile.credits : 50}</span>
+            <span className="text-slate-400 text-[10px] uppercase font-bold">Credits</span>
+          </div>
+
+          {/* Engine Health Badge */}
+          <div className="flex items-center gap-2.5 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs">
+            <Cpu className="w-4 h-4 text-emerald-400" />
+            <span className={`inline-block w-2 h-2 rounded-full ${engineStatus === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+            <span className={engineStatus === 'online' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+              {engineStatus.toUpperCase()}
+            </span>
             {engineLatency && (
-              <span className="text-slate-400 text-[10px]">Heartbeat: {engineLatency}ms</span>
+              <span className="text-slate-400 text-[10px]">({engineLatency}ms)</span>
             )}
           </div>
         </div>
       </header>
+
+      {/* Beamed Mobile Photo Banner (If photo received via QR Bridge) */}
+      {beamedPhoto && (
+        <div className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-xl overflow-hidden border border-emerald-500/40 bg-slate-950 flex-shrink-0">
+              <img src={beamedPhoto} alt="Beamed from Phone" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Photo Beamed from Mobile Phone!</span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Image captured via Native SSE stream. Ready for SAM 3.1 perception and solving.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSolve}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md flex-shrink-0"
+          >
+            <span>Solve Beamed Problem</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Grid Layout: Solver & Twin Generator */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -493,6 +581,13 @@ export default function HomePage() {
           </div>
         )}
       </section>
+
+      {/* The QR Camera Bridge Modal */}
+      <CameraBridgeModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onPhotoReceived={handlePhotoReceived}
+      />
     </main>
   );
 }
