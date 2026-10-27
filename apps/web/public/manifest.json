@@ -1,0 +1,24 @@
+{
+  "name": "SolvAm — WAEC Math Intelligence & Neuro-Symbolic Copilot",
+  "short_name": "SolvAm",
+  "description": "AI-powered camera math tutor, SAM 3.1 exam page segmenter & red-pen handwritten work grader tailored for WAEC/SSCE students.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070b14",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

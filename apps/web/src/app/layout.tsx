@@ -27,8 +27,10 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "SolvAm — AI Copilot & WAEC Math Intelligence",
   description: "AI-powered camera math tutor, SAM 3.1 exam scanner & red-pen handwritten work grader tailored for SSCE/WAEC students.",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icons/icon-192.svg",
+    apple: "/icons/icon-192.svg",
   },
 };
 

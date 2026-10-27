@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d4ed8" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <radialGradient id="sparkleGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#60a5fa" />
+    </radialGradient>
+  </defs>
+  <rect width="192" height="192" rx="42" fill="url(#bgGrad)" />
+  <circle cx="96" cy="96" r="64" fill="none" stroke="#60a5fa" stroke-width="2" stroke-dasharray="6 6" opacity="0.4" />
+  <!-- Sparkles / Compass Math Cross -->
+  <path d="M96 36 L104 88 L156 96 L104 104 L96 156 L88 104 L36 96 L88 88 Z" fill="url(#sparkleGrad)" />
+  <circle cx="96" cy="96" r="8" fill="#ffffff" />
+</svg>

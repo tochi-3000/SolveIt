@@ -8,6 +8,8 @@ import SamSegmentationCanvas from '@/components/SamSegmentationCanvas';
 import EquationVerificationModal from '@/components/EquationVerificationModal';
 import ScaffoldingSolutionView from '@/components/ScaffoldingSolutionView';
 import RedPenGraderCanvas from '@/components/RedPenGraderCanvas';
+import JudgeModeBar from '@/components/JudgeModeBar';
+import JudgeTelemetryDrawer from '@/components/JudgeTelemetryDrawer';
 import AuthProfileModal, { UserProfileData } from '@/components/AuthProfileModal';
 import { cropImageRegion } from '@/lib/image/crop';
 import { optimizeImage } from '@/lib/image/optimizer';
@@ -159,6 +161,10 @@ export default function HomePage() {
   });
   const [handwritingLoading, setHandwritingLoading] = useState<boolean>(false);
   const [handwritingViewMode, setHandwritingViewMode] = useState<'notebook' | 'manual-steps'>('notebook');
+
+  // Phase 6: Hackathon Judge Mode & Architecture Telemetry State
+  const [isJudgeDrawerOpen, setIsJudgeDrawerOpen] = useState<boolean>(false);
+  const [activeJudgeSample, setActiveJudgeSample] = useState<number | null>(null);
 
   // Apply theme mode to <html> element and keep resolvedDark synchronized
   const applyDomTheme = useCallback((mode: ThemeMode) => {
@@ -524,6 +530,29 @@ export default function HomePage() {
       setHandwritingLoading(false);
     }
   }, []);
+
+  // Phase 6: Hackathon Judge Mode 1-Click Handlers
+  const handleTriggerJudgeSample1 = useCallback(() => {
+    setActiveJudgeSample(1);
+    navigateToView('scanner');
+    handleLoadSampleSheet();
+  }, []);
+
+  const handleTriggerJudgeSample2 = useCallback(() => {
+    setActiveJudgeSample(2);
+    const targetEq = '3x^2 - 5x - 2 = 0';
+    setMuseTestEquation(targetEq);
+    navigateToView('muse-spark');
+    runMultimodalSolve('mockBase64ImageData', targetEq, 'intermediate', 'pidgin');
+  }, [runMultimodalSolve]);
+
+  const handleTriggerJudgeSample3 = useCallback(() => {
+    setActiveJudgeSample(3);
+    setSolverSubTab('red-pen-verifier');
+    setHandwritingViewMode('notebook');
+    navigateToView('solver');
+    handleLoadHandwritingSample('flawed_student_notebook_sign_error');
+  }, [handleLoadHandwritingSample]);
 
   const getInitials = (name?: string) => {
     if (!name) return 'ST';
@@ -994,6 +1023,14 @@ export default function HomePage() {
           <main className="flex-1 bg-[#ffffff] dark:bg-[#0f172a] p-8 lg:p-10 flex flex-col justify-between min-w-0 transition-colors">
             {/* Primary Workspace Content */}
             <div className="max-w-5xl w-full mx-auto space-y-8">
+              {/* Phase 6: Hackathon Judge Mode Quickbar */}
+              <JudgeModeBar
+                onSelectSample1={handleTriggerJudgeSample1}
+                onSelectSample2={handleTriggerJudgeSample2}
+                onSelectSample3={handleTriggerJudgeSample3}
+                onOpenTelemetryDrawer={() => setIsJudgeDrawerOpen(true)}
+                activeSample={activeJudgeSample}
+              />
               {/* =================================================================
                   VIEW A: SHAZAM FOR MATH EXAM PAGE SCANNER
                  ================================================================= */}
@@ -2120,6 +2157,14 @@ export default function HomePage() {
         onClose={() => setIsAuthModalOpen(false)}
         userProfile={userProfile}
         onProfileUpdated={(updated) => setUserProfile(updated)}
+      />
+
+      {/* Phase 6: Hackathon Judge Architecture & Telemetry Drawer */}
+      <JudgeTelemetryDrawer
+        isOpen={isJudgeDrawerOpen}
+        onClose={() => setIsJudgeDrawerOpen(false)}
+        engineStatus={engineStatus}
+        engineLatency={engineLatency}
       />
     </div>
   );
