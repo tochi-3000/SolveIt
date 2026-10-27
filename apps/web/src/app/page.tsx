@@ -7,13 +7,18 @@ import TelemetryHud from '@/components/TelemetryHud';
 import SamSegmentationCanvas from '@/components/SamSegmentationCanvas';
 import EquationVerificationModal from '@/components/EquationVerificationModal';
 import ScaffoldingSolutionView from '@/components/ScaffoldingSolutionView';
+import RedPenGraderCanvas from '@/components/RedPenGraderCanvas';
 import AuthProfileModal, { UserProfileData } from '@/components/AuthProfileModal';
 import { cropImageRegion } from '@/lib/image/crop';
 import { optimizeImage } from '@/lib/image/optimizer';
 import { playSpokenMath } from '@/lib/audio/mathSpeechNormalizer';
 import { getSampleWaecExamSheet } from '@/lib/fixtures/waecExamSheet';
+import {
+  getFlawedStudentNotebookFixture,
+  getCorrectStudentNotebookFixture,
+} from '@/lib/fixtures/studentNotebookFixtures';
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
-import { SolveResponse, VerifyStepsResponse, SAMSegment } from '@solvam/shared-types';
+import { SolveResponse, VerifyStepsResponse, SAMSegment, GradeHandwritingResponse } from '@solvam/shared-types';
 import { PedagogicalSolution, TelemetryEvent, PedagogicalLevel, LanguageMode } from '@/lib/ai/types';
 import {
   Calculator,
@@ -133,6 +138,27 @@ export default function HomePage() {
   ]);
   const [verifyResult, setVerifyResult] = useState<VerifyStepsResponse | null>(null);
   const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
+
+  // Phase 5: Red-Pen Handwritten Grader State
+  const [handwritingResult, setHandwritingResult] = useState<GradeHandwritingResponse>(() => {
+    const fixture = getFlawedStudentNotebookFixture();
+    return {
+      success: true,
+      model: 'Meta Muse Spark 1.3 & Deterministic SymPy CAS',
+      isFullyCorrect: fixture.isFullyCorrect,
+      totalLines: fixture.lines.length,
+      validLineCount: 1,
+      firstErrorIndex: 2,
+      waecScoreEarned: fixture.waecScoreEarned,
+      waecScoreTotal: fixture.waecScoreTotal,
+      lines: fixture.lines,
+      pedagogicalSummary: fixture.pedagogicalSummary,
+      imageUrl: fixture.svgDataUri,
+      durationMs: 42,
+    };
+  });
+  const [handwritingLoading, setHandwritingLoading] = useState<boolean>(false);
+  const [handwritingViewMode, setHandwritingViewMode] = useState<'notebook' | 'manual-steps'>('notebook');
 
   // Apply theme mode to <html> element and keep resolvedDark synchronized
   const applyDomTheme = useCallback((mode: ThemeMode) => {
@@ -443,6 +469,61 @@ export default function HomePage() {
       '(3x + 1)(x - 2) = 0',
     ]);
   };
+
+  const handleLoadHandwritingSample = useCallback(async (sampleId: string) => {
+    setHandwritingLoading(true);
+    try {
+      const res = await fetch('/api/math/grade-handwriting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sampleId }),
+      });
+      if (res.ok) {
+        const data: GradeHandwritingResponse = await res.json();
+        setHandwritingResult(data);
+      } else {
+        const fix =
+          sampleId === 'correct_student_notebook_rigorous'
+            ? getCorrectStudentNotebookFixture()
+            : getFlawedStudentNotebookFixture();
+        setHandwritingResult({
+          success: true,
+          model: 'Meta Muse Spark 1.3 & Deterministic SymPy CAS (Client Fallback)',
+          isFullyCorrect: fix.isFullyCorrect,
+          totalLines: fix.lines.length,
+          validLineCount: fix.lines.filter((l) => l.isMathematicallyValid).length,
+          firstErrorIndex: fix.isFullyCorrect
+            ? null
+            : fix.lines.find((l) => !l.isMathematicallyValid)?.lineIndex ?? 2,
+          waecScoreEarned: fix.waecScoreEarned,
+          waecScoreTotal: fix.waecScoreTotal,
+          lines: fix.lines,
+          pedagogicalSummary: fix.pedagogicalSummary,
+          imageUrl: fix.svgDataUri,
+          durationMs: 45,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to grade student handwriting sample:', err);
+      const fix = getFlawedStudentNotebookFixture();
+      setHandwritingResult({
+        success: true,
+        model: 'Meta Muse Spark 1.3 & Deterministic SymPy CAS (Client Fallback)',
+        isFullyCorrect: fix.isFullyCorrect,
+        totalLines: fix.lines.length,
+        validLineCount: 1,
+        firstErrorIndex: 2,
+        waecScoreEarned: fix.waecScoreEarned,
+        waecScoreTotal: fix.waecScoreTotal,
+        lines: fix.lines,
+        pedagogicalSummary: fix.pedagogicalSummary,
+        imageUrl: fix.svgDataUri,
+        durationMs: 45,
+      });
+    } finally {
+      setHandwritingLoading(false);
+    }
+  }, []);
 
   const getInitials = (name?: string) => {
     if (!name) return 'ST';
@@ -1247,161 +1328,218 @@ export default function HomePage() {
                       </div>
                     </section>
                   ) : (
-                    /* SUB-TAB 2: RED-PEN STEP VERIFIER */
-                    <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-8 space-y-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-                        <div>
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                            <Award className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-                            <span>WAEC Theory Marking Rubric (M1 / A1)</span>
+                    /* SUB-TAB 2: RED-PEN STEP VERIFIER & VISUAL NOTEBOOK GRADER */
+                    <div className="space-y-6">
+                      {/* View Mode Switcher: Visual Notebook Canvas vs Manual Text Step Editor */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8]">
+                            Grader Workspace:
+                          </span>
+                          <div className="flex items-center p-0.5 bg-[#f0f5fa] dark:bg-[#131c2e] rounded-[8px]">
+                            <button
+                              type="button"
+                              onClick={() => setHandwritingViewMode('notebook')}
+                              className={`px-3 py-1.5 rounded-[6px] text-xs font-semibold transition flex items-center gap-1.5 ${
+                                handwritingViewMode === 'notebook'
+                                  ? 'bg-[#2563eb] text-white shadow-sm'
+                                  : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
+                              }`}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>Handwritten Notebook Canvas</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHandwritingViewMode('manual-steps')}
+                              className={`px-3 py-1.5 rounded-[6px] text-xs font-semibold transition flex items-center gap-1.5 ${
+                                handwritingViewMode === 'manual-steps'
+                                  ? 'bg-[#2563eb] text-white shadow-sm'
+                                  : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
+                              }`}
+                            >
+                              <Calculator className="w-3.5 h-3.5" />
+                              <span>Manual Step Editor</span>
+                            </button>
                           </div>
-                          <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
-                            &ldquo;Red-Pen&rdquo; Step Verifier &amp; Mistake Pinpointer
-                          </h2>
-                          <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
-                            Verifies line-by-line algebraic equivalence using SymPy AST subtraction. Pinpoints the exact line where equivalence breaks while awarding partial Method Marks (`M1`).
-                          </p>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={resetCorrectSteps}
-                            className="px-3.5 py-2 text-xs font-semibold bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px] transition"
-                          >
-                            Load 100% Correct Steps
-                          </button>
-                          <button
-                            type="button"
-                            onClick={injectMistake}
-                            className="px-3.5 py-2 text-xs font-semibold bg-white dark:bg-[#0f172a] hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] transition"
-                          >
-                            Inject Sign Mistake (Line 2)
-                          </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-[#64748b] dark:text-[#94a3b8]">
+                            {handwritingViewMode === 'notebook'
+                              ? 'Interactive Ruled Paper with Blue Bic Ink'
+                              : 'Keyboard Step Input with SymPy AST Subtraction'}
+                          </span>
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1.5">
-                          Original Exam Question:
-                        </label>
-                        <input
-                          type="text"
-                          value={originalProblem}
-                          onChange={(e) => setOriginalProblem(e.target.value)}
-                          className="w-full sm:w-96 bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-2.5 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20"
+                      {handwritingViewMode === 'notebook' ? (
+                        <RedPenGraderCanvas
+                          gradingResult={handwritingResult}
+                          onSelectSample={handleLoadHandwritingSample}
+                          onSolveTwin={(twinEq) => {
+                            setEquationInput(twinEq);
+                            setSolverSubTab('equation-solver');
+                          }}
+                          isLoading={handwritingLoading}
                         />
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
-                          Student&apos;s Sequential Handwritten Working Lines:
-                        </div>
-                        {studentSteps.map((step, idx) => (
-                          <div key={idx} className="flex items-center gap-3">
-                            <span className="w-9 h-9 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] font-mono text-xs flex items-center justify-center font-semibold flex-shrink-0">
-                              {String(idx + 1).padStart(2, '0')}
-                            </span>
-                            <input
-                              type="text"
-                              value={step}
-                              onChange={(e) => {
-                                const updated = [...studentSteps];
-                                updated[idx] = e.target.value;
-                                setStudentSteps(updated);
-                              }}
-                              className="flex-1 bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-2.5 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20"
-                            />
-                            <div className="w-52 hidden sm:block p-2.5 bg-white dark:bg-[#0f172a] rounded-[8px] text-xs text-[#0f172a] dark:text-[#f8fafc] text-center border border-[#e2e8f0] dark:border-[#1e293b]">
-                              <MathDisplay value={step} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleVerify}
-                        disabled={verifyLoading}
-                        className="w-full py-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-xs sm:text-sm rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                      >
-                        {verifyLoading ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4 h-4" />
-                            <span>Run Line-by-Line WAEC Diagnostic Verification</span>
-                          </>
-                        )}
-                      </button>
-
-                      {verifyResult && (
-                        <div className="p-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] space-y-4 animate-fadeIn">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e2e8f0] dark:border-[#1e293b]">
+                      ) : (
+                        <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-8 space-y-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
                             <div>
-                              <div className="text-sm font-bold flex items-center gap-2">
-                                {verifyResult.is_fully_correct ? (
-                                  <span className="flex items-center gap-1.5 text-[#1e3a8a] dark:text-[#93c5fd]">
-                                    <CheckCircle2 className="w-5 h-5 text-[#2563eb] dark:text-[#60a5fa]" />
-                                    100% Mathematically Rigorous Working
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
-                                    <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                                    Step-Level Equivalence Break Detected
-                                  </span>
-                                )}
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
+                                <Award className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+                                <span>WAEC Theory Marking Rubric (M1 / A1)</span>
                               </div>
-                              <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
-                                {verifyResult.pedagogical_summary}
+                              <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+                                &ldquo;Red-Pen&rdquo; Step Verifier &amp; Mistake Pinpointer
+                              </h2>
+                              <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
+                                Verifies line-by-line algebraic equivalence using SymPy AST subtraction. Pinpoints the exact line where equivalence breaks while awarding partial Method Marks (`M1`).
                               </p>
                             </div>
 
-                            <div className="px-5 py-2.5 bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] text-center">
-                              <div className="text-[10px] text-[#64748b] dark:text-[#94a3b8] font-semibold uppercase tracking-wider">
-                                WAEC Marks Earned
-                              </div>
-                              <div className="text-2xl font-bold text-[#1e3a8a] dark:text-[#93c5fd] font-mono">
-                                {verifyResult.waec_score_earned} / {verifyResult.waec_score_total}
-                              </div>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={resetCorrectSteps}
+                                className="px-3.5 py-2 text-xs font-semibold bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px] transition"
+                              >
+                                Load 100% Correct Steps
+                              </button>
+                              <button
+                                type="button"
+                                onClick={injectMistake}
+                                className="px-3.5 py-2 text-xs font-semibold bg-white dark:bg-[#0f172a] hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] transition"
+                              >
+                                Inject Sign Mistake (Line 2)
+                              </button>
                             </div>
                           </div>
 
-                          <div className="divide-y divide-[#e2e8f0] dark:divide-[#1e293b]">
-                            {verifyResult.step_analyses.map((sa) => (
-                              <div
-                                key={sa.step_index}
-                                className="py-3.5 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-mono font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                                    Line {sa.step_index}
-                                  </span>
-                                  <span className="font-mono text-sm text-[#0f172a] dark:text-[#f8fafc] font-semibold">
-                                    {sa.raw_text}
-                                  </span>
-                                </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1.5">
+                              Original Exam Question:
+                            </label>
+                            <input
+                              type="text"
+                              value={originalProblem}
+                              onChange={(e) => setOriginalProblem(e.target.value)}
+                              className="w-full sm:w-96 bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-2.5 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20"
+                            />
+                          </div>
 
-                                <div className="flex items-center gap-3">
-                                  <span className="text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
-                                    {sa.feedback}
-                                  </span>
-                                  <span
-                                    className={`px-2.5 py-1 rounded-[8px] text-xs font-semibold font-mono ${
-                                      sa.waec_mark === 'M1' || sa.waec_mark === 'A1'
-                                        ? 'bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd]'
-                                        : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
-                                    }`}
-                                  >
-                                    {sa.waec_mark}
-                                  </span>
+                          <div className="space-y-3">
+                            <div className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
+                              Student&apos;s Sequential Handwritten Working Lines:
+                            </div>
+                            {studentSteps.map((step, idx) => (
+                              <div key={idx} className="flex items-center gap-3">
+                                <span className="w-9 h-9 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] font-mono text-xs flex items-center justify-center font-semibold flex-shrink-0">
+                                  {String(idx + 1).padStart(2, '0')}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={step}
+                                  onChange={(e) => {
+                                    const updated = [...studentSteps];
+                                    updated[idx] = e.target.value;
+                                    setStudentSteps(updated);
+                                  }}
+                                  className="flex-1 bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-2.5 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20"
+                                />
+                                <div className="w-52 hidden sm:block p-2.5 bg-white dark:bg-[#0f172a] rounded-[8px] text-xs text-[#0f172a] dark:text-[#f8fafc] text-center border border-[#e2e8f0] dark:border-[#1e293b]">
+                                  <MathDisplay value={step} />
                                 </div>
                               </div>
                             ))}
                           </div>
-                        </div>
+
+                          <button
+                            type="button"
+                            onClick={handleVerify}
+                            disabled={verifyLoading}
+                            className="w-full py-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-xs sm:text-sm rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                          >
+                            {verifyLoading ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <ShieldCheck className="w-4 h-4" />
+                                <span>Run Line-by-Line WAEC Diagnostic Verification</span>
+                              </>
+                            )}
+                          </button>
+
+                          {verifyResult && (
+                            <div className="p-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] space-y-4 animate-fadeIn">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e2e8f0] dark:border-[#1e293b]">
+                                <div>
+                                  <div className="text-sm font-bold flex items-center gap-2">
+                                    {verifyResult.is_fully_correct ? (
+                                      <span className="flex items-center gap-1.5 text-[#1e3a8a] dark:text-[#93c5fd]">
+                                        <CheckCircle2 className="w-5 h-5 text-[#2563eb] dark:text-[#60a5fa]" />
+                                        100% Mathematically Rigorous Working
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+                                        <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                                        Step-Level Equivalence Break Detected
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
+                                    {verifyResult.pedagogical_summary}
+                                  </p>
+                                </div>
+
+                                <div className="px-5 py-2.5 bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] text-center">
+                                  <div className="text-[10px] text-[#64748b] dark:text-[#94a3b8] font-semibold uppercase tracking-wider">
+                                    WAEC Marks Earned
+                                  </div>
+                                  <div className="text-2xl font-bold text-[#1e3a8a] dark:text-[#93c5fd] font-mono">
+                                    {verifyResult.waec_score_earned} / {verifyResult.waec_score_total}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="divide-y divide-[#e2e8f0] dark:divide-[#1e293b]">
+                                {verifyResult.step_analyses.map((sa) => (
+                                  <div
+                                    key={sa.step_index}
+                                    className="py-3.5 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-mono font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
+                                        Line {sa.step_index}
+                                      </span>
+                                      <span className="font-mono text-sm text-[#0f172a] dark:text-[#f8fafc] font-semibold">
+                                        {sa.raw_text}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
+                                        {sa.feedback}
+                                      </span>
+                                      <span
+                                        className={`px-2.5 py-1 rounded-[8px] text-xs font-semibold font-mono ${
+                                          sa.waec_mark === 'M1' || sa.waec_mark === 'A1'
+                                            ? 'bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd]'
+                                            : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
+                                        }`}
+                                      >
+                                        {sa.waec_mark}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </section>
                       )}
-                    </section>
+                    </div>
                   )}
                 </div>
               )}

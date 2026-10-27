@@ -52,6 +52,33 @@ export interface VerifyStepItem {
   feedback?: string | null;
 }
 
+export interface HandwrittenGradedLine {
+  lineIndex: number;
+  boundingBox: BoundingBox;
+  rawText: string;
+  latex: string;
+  isMathematicallyValid: boolean;
+  waecMark: WAECMark;
+  feedback?: string | null;
+  errorType?: 'sign_error' | 'expansion_error' | 'arithmetic_slip' | 'root_inversion' | 'unknown' | null;
+}
+
+export interface GradeHandwritingResponse {
+  success: boolean;
+  model: string;
+  isFullyCorrect: boolean;
+  totalLines: number;
+  validLineCount: number;
+  firstErrorIndex?: number | null;
+  waecScoreEarned: number;
+  waecScoreTotal: number;
+  lines: HandwrittenGradedLine[];
+  pedagogicalSummary: string;
+  durationMs: number;
+  imageUrl?: string;
+  error?: string | null;
+}
+
 export interface VerifyStepsRequest {
   original_problem: string;
   steps: string[];
