@@ -6,8 +6,9 @@ node_modules/
 # Testing
 coverage/
 
-# Next.js
+# Next.js & Turborepo
 .next/
+.turbo/
 out/
 build/
 dist/

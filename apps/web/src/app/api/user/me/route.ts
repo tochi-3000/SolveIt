@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUserOrGuest } from '@/lib/auth';
+import { getCurrentUserOrGuest, isClerkConfigured } from '@/lib/auth';
 
 export async function GET() {
   try {
     const user = await getCurrentUserOrGuest();
-    const res = NextResponse.json(user);
+    const res = NextResponse.json({
+      ...user,
+      clerkEnabled: isClerkConfigured(),
+    });
 
     // If guest, set cookie on response
     if (user.is_guest) {

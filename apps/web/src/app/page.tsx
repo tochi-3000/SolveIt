@@ -1,10 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MathDisplay from '@/components/MathDisplay';
 import CameraBridgeModal from '@/components/CameraBridgeModal';
 import TelemetryHud from '@/components/TelemetryHud';
-import { SolveResponse, VerifyStepsResponse, GenerateTwinResponse } from '@solvam/shared-types';
+import SamSegmentationCanvas from '@/components/SamSegmentationCanvas';
+import EquationVerificationModal from '@/components/EquationVerificationModal';
+import { cropImageRegion } from '@/lib/image/crop';
+import { optimizeImage } from '@/lib/image/optimizer';
+import { getSampleWaecExamSheet } from '@/lib/fixtures/waecExamSheet';
+import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { SolveResponse, VerifyStepsResponse, GenerateTwinResponse, SAMSegment, BoundingBox } from '@solvam/shared-types';
 import { PedagogicalSolution, TelemetryEvent, PedagogicalLevel, LanguageMode } from '@/lib/ai/types';
 import { 
   Calculator, 
@@ -22,7 +28,12 @@ import {
   Volume2,
   AlertTriangle,
   Layers,
-  Globe2
+  Globe2,
+  LogIn,
+  FileText,
+  Upload,
+  Scan,
+  Camera
 } from 'lucide-react';
 
 interface UserProfile {
@@ -31,6 +42,7 @@ interface UserProfile {
   email?: string;
   is_guest: boolean;
   credits: number;
+  clerkEnabled?: boolean;
 }
 
 export default function HomePage() {
@@ -44,6 +56,15 @@ export default function HomePage() {
   const [isCameraModalOpen, setIsCameraModalOpen] = useState<boolean>(false);
   const [beamedPhoto, setBeamedPhoto] = useState<string | null>(null);
 
+  // Phase 3: Meta SAM 3.1 Page Segmentation State
+  const [activeExamImage, setActiveExamImage] = useState<string | null>(null);
+  const [samSegments, setSamSegments] = useState<SAMSegment[]>([]);
+  const [samLoading, setSamLoading] = useState<boolean>(false);
+  const [selectedSegment, setSelectedSegment] = useState<SAMSegment | null>(null);
+  const [croppedSegmentUri, setCroppedSegmentUri] = useState<string | null>(null);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Multimodal Vision + Tool-Calling State (Phase 2b)
   const [pedagogicalLevel, setPedagogicalLevel] = useState<PedagogicalLevel>('intermediate');
   const [languageMode, setLanguageMode] = useState<LanguageMode>('standard');
@@ -52,17 +73,17 @@ export default function HomePage() {
   const [transcribeLoading, setTranscribeLoading] = useState<boolean>(false);
 
   // Section 1: Deterministic Solver State
-  const [equationInput, setEquationInput] = useState<string>('2x^2 + 5x - 3 = 0');
+  const [equationInput, setEquationInput] = useState<string>('3x^2 - 5x - 2 = 0');
   const [solveResult, setSolveResult] = useState<SolveResponse | null>(null);
   const [solveLoading, setSolveLoading] = useState<boolean>(false);
   const [solveLatency, setSolveLatency] = useState<number | null>(null);
 
   // Section 2: Step Verifier State
-  const [originalProblem, setOriginalProblem] = useState<string>('2x^2 + 5x - 3 = 0');
+  const [originalProblem, setOriginalProblem] = useState<string>('3x^2 - 5x - 2 = 0');
   const [studentSteps, setStudentSteps] = useState<string[]>([
-    '2x^2 + 6x - x - 3 = 0',
-    '2x(x + 3) - 1(x + 3) = 0',
-    '(2x - 1)(x + 3) = 0'
+    '3x^2 - 6x + x - 2 = 0',
+    '3x(x - 2) + 1(x - 2) = 0',
+    '(3x + 1)(x - 2) = 0'
   ]);
   const [verifyResult, setVerifyResult] = useState<VerifyStepsResponse | null>(null);
   const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
@@ -71,8 +92,10 @@ export default function HomePage() {
   useEffect(() => {
     async function initPage() {
       const start = performance.now();
+      const engineBaseUrl =
+        process.env.NEXT_PUBLIC_SYMBOLIC_ENGINE_URL || 'http://localhost:8000';
       try {
-        const res = await fetch('http://localhost:8000/health');
+        const res = await fetch(`${engineBaseUrl}/health`);
         if (res.ok) {
           setEngineLatency(Math.round(performance.now() - start));
           setEngineStatus('online');
@@ -97,14 +120,86 @@ export default function HomePage() {
     initPage();
   }, []);
 
+  // Segment an exam image with Meta SAM 3.1
+  const segmentExamImage = async (imageUri: string, sampleId?: string) => {
+    setSamLoading(true);
+    setActiveExamImage(imageUri);
+    try {
+      const res = await fetch('/api/math/segment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: imageUri, sampleId }),
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.segments)) {
+        setSamSegments(data.segments);
+        if (userProfile && typeof data.remainingCredits === 'number') {
+          setUserProfile({ ...userProfile, credits: data.remainingCredits });
+        }
+      }
+    } catch (err) {
+      console.error('SAM 3.1 segmentation failed:', err);
+    } finally {
+      setSamLoading(false);
+    }
+  };
+
+  // 1-Click Load Sample WAEC 2024 Exam Paper
+  const handleLoadSampleSheet = () => {
+    const fixture = getSampleWaecExamSheet();
+    setActiveExamImage(fixture.svgDataUri);
+    setSamSegments(fixture.segments);
+    // Call segment API for telemetry recording and DB credit sync
+    segmentExamImage(fixture.svgDataUri, 'waec-2024-paper-2');
+  };
+
   // Handle Photo Beamed from Mobile via Native SSE
-  const handlePhotoReceived = (base64Image: string) => {
+  const handlePhotoReceived = async (base64Image: string) => {
     setBeamedPhoto(base64Image);
-    runMultimodalSolve(base64Image);
+    try {
+      const optimized = await optimizeImage(base64Image);
+      segmentExamImage(optimized);
+    } catch (e) {
+      segmentExamImage(base64Image);
+    }
+  };
+
+  // Handle Desktop File Upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const optimized = await optimizeImage(file);
+      segmentExamImage(optimized);
+    } catch (err) {
+      console.error('File optimization error:', err);
+    }
+  };
+
+  // Select a Segment on SAM Canvas
+  const handleSelectSegment = async (segment: SAMSegment) => {
+    setSelectedSegment(segment);
+    if (!activeExamImage) return;
+
+    try {
+      const cropped = await cropImageRegion(activeExamImage, segment.boundingBox);
+      setCroppedSegmentUri(cropped);
+    } catch (err) {
+      console.warn('Canvas crop fallback:', err);
+      setCroppedSegmentUri(activeExamImage);
+    }
+
+    setIsVerificationModalOpen(true);
+  };
+
+  // Confirm in Verification Modal & Trigger Solver Loop
+  const handleConfirmAndSolve = (verifiedEquation: string, croppedBase64: string) => {
+    setIsVerificationModalOpen(false);
+    runMultimodalSolve(croppedBase64, verifiedEquation);
   };
 
   // Run Meta Muse Spark Multimodal Transcription + Tool Loop
-  const runMultimodalSolve = async (imageData: string) => {
+  const runMultimodalSolve = async (imageData: string, verifiedEquation?: string) => {
     setTranscribeLoading(true);
     try {
       const res = await fetch('/api/math/transcribe', {
@@ -114,6 +209,7 @@ export default function HomePage() {
           imageBase64: imageData,
           pedagogicalLevel,
           languageMode,
+          verifiedEquation,
         }),
       });
 
@@ -124,8 +220,12 @@ export default function HomePage() {
         if (data.solution.extractedLatex) {
           setEquationInput(data.solution.extractedLatex);
         }
-        if (userProfile && userProfile.credits > 0) {
-          setUserProfile({ ...userProfile, credits: userProfile.credits - 1 });
+        if (userProfile) {
+          const nextCredits =
+            typeof data.remainingCredits === 'number'
+              ? data.remainingCredits
+              : Math.max(0, userProfile.credits - 1);
+          setUserProfile({ ...userProfile, credits: nextCredits });
         }
       }
     } catch (e) {
@@ -149,8 +249,12 @@ export default function HomePage() {
       setSolveResult(data);
       setSolveLatency(Math.round(performance.now() - start));
 
-      if (userProfile && userProfile.credits > 0) {
-        setUserProfile({ ...userProfile, credits: userProfile.credits - 1 });
+      if (userProfile) {
+        const nextCredits =
+          typeof data.remainingCredits === 'number'
+            ? data.remainingCredits
+            : Math.max(0, userProfile.credits - 1);
+        setUserProfile({ ...userProfile, credits: nextCredits });
       }
     } catch (e) {
       console.error(e);
@@ -193,17 +297,17 @@ export default function HomePage() {
 
   const injectMistake = () => {
     setStudentSteps([
-      '2x^2 + 6x - x - 3 = 0',
-      '2x^2 + 6x + x - 3 = 0',
-      '(2x - 1)(x + 3) = 0'
+      '3x^2 - 6x + x - 2 = 0',
+      '3x^2 + 6x + x - 2 = 0',
+      '(3x + 1)(x - 2) = 0'
     ]);
   };
 
   const resetCorrectSteps = () => {
     setStudentSteps([
-      '2x^2 + 6x - x - 3 = 0',
-      '2x(x + 3) - 1(x + 3) = 0',
-      '(2x - 1)(x + 3) = 0'
+      '3x^2 - 6x + x - 2 = 0',
+      '3x(x - 2) + 1(x - 2) = 0',
+      '(3x + 1)(x - 2) = 0'
     ]);
   };
 
@@ -217,14 +321,14 @@ export default function HomePage() {
               Meta Hackathon 2026 — Track 1
             </span>
             <span className="px-2.5 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-full">
-              Phase 2b: Muse Spark Tool Loop
+              Phase 3: SAM 3.1 Multi-Equation Segmentation
             </span>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight mt-2 text-white flex items-center gap-2">
             SolvAm <span className="text-emerald-400">Core</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Neuro-Symbolic Math Tutor & WAEC Rubric Diagnostic Verifier
+            "Shazam for Math" • Meta SAM 3.1 Perception & Neuro-Symbolic WAEC Grader
           </p>
         </div>
 
@@ -252,8 +356,112 @@ export default function HomePage() {
               {engineStatus.toUpperCase()}
             </span>
           </div>
+
+          {/* Clerk Auth Badge (Only rendered when Clerk keys are configured) */}
+          {userProfile?.clerkEnabled && (
+            <div className="flex items-center">
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button
+                    type="button"
+                    className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Sign In</span>
+                  </button>
+                </SignInButton>
+              </SignedOut>
+              <SignedIn>
+                <UserButton afterSignOutUrl="/" />
+              </SignedIn>
+            </div>
+          )}
         </div>
       </header>
+
+      {/* PHASE 3 HERO: Shazam for Math • Meta SAM 3.1 Multi-Equation Scanner */}
+      <section className="bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
+              <Scan className="w-4 h-4" />
+              <span>Perception Engine • Meta SAM 3.1</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">
+              "Shazam for Math" Exam Page Scanner
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
+              Snap an entire multi-problem WAEC exam paper. Meta SAM 3.1 isolates each equation with glowing segmentation boxes so you can tap the exact question you want to solve.
+            </p>
+          </div>
+
+          {/* Action Trigger Bar */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* 1-Click Sample Sheet for Judges */}
+            <button
+              type="button"
+              onClick={handleLoadSampleSheet}
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-950 active:scale-95 transition flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              <span>📄 1-Click WAEC 2024 Exam Sheet</span>
+            </button>
+
+            {/* Upload File */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept="image/*"
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4 text-emerald-400" />
+              <span>Upload Photo</span>
+            </button>
+
+            {/* Scan via QR Bridge */}
+            <button
+              type="button"
+              onClick={() => setIsCameraModalOpen(true)}
+              className="px-3.5 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-500/40 transition flex items-center gap-2"
+            >
+              <Camera className="w-4 h-4 text-emerald-400" />
+              <span>Phone Lens</span>
+            </button>
+          </div>
+        </div>
+
+        {/* SAM 3.1 Interactive Canvas (when an exam image is active) */}
+        {activeExamImage ? (
+          <SamSegmentationCanvas
+            imageUrl={activeExamImage}
+            segments={samSegments}
+            selectedSegmentId={selectedSegment?.id || null}
+            onSelectSegment={handleSelectSegment}
+            isLoading={samLoading}
+          />
+        ) : (
+          <div
+            onClick={handleLoadSampleSheet}
+            className="cursor-pointer border-2 border-dashed border-slate-800 hover:border-emerald-500/60 rounded-2xl p-8 sm:p-12 text-center bg-slate-950/40 hover:bg-slate-900/40 transition group"
+          >
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+              <Scan className="w-7 h-7" />
+            </div>
+            <h3 className="text-base font-bold text-white group-hover:text-emerald-300 transition">
+              Click Here to Load Official WAEC 2024 Exam Sheet
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+              Or beam a photo from your phone using the QR bridge to test SAM 3.1 real-time multi-equation segmentation.
+            </p>
+          </div>
+        )}
+      </section>
 
       {/* Scaffolding & Language Controls */}
       <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
@@ -413,7 +621,7 @@ export default function HomePage() {
                   type="text"
                   value={equationInput}
                   onChange={(e) => setEquationInput(e.target.value)}
-                  placeholder="e.g. 2x^2 + 5x - 3 = 0"
+                  placeholder="e.g. 3x^2 - 5x - 2 = 0"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 />
               </div>
@@ -426,7 +634,7 @@ export default function HomePage() {
                 <span className="text-slate-400 self-center">WAEC Samples:</span>
                 <button
                   type="button"
-                  onClick={() => setEquationInput('2x^2 + 5x - 3 = 0')}
+                  onClick={() => setEquationInput('3x^2 - 5x - 2 = 0')}
                   className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
                 >
                   Quadratic
@@ -504,17 +712,17 @@ export default function HomePage() {
                 Meta Muse Spark Tool-Loop Test
               </h2>
               <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
-                Phase 2b Live
+                Phase 3 Live
               </span>
             </div>
 
             <p className="text-xs text-slate-400 mb-4">
-              Test the full Multimodal Perception + SymPy Tool Calling loop using a sample WAEC question photo.
+              Test the full Multimodal Perception + SymPy Tool Calling loop on any verified WAEC formula.
             </p>
 
             <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
               <div className="text-xs text-slate-400">Active Test Target:</div>
-              <div className="text-sm font-semibold text-white">WAEC Standard Quadratic Scaffolding</div>
+              <div className="text-sm font-semibold text-white">WAEC Standard Quadratic Scaffolding ($3x^2 - 5x - 2 = 0$)</div>
               <div className="text-xs text-slate-400">Triggers: Multimodal Vision &rarr; SymPy Tool &rarr; WAEC M1/A1 Marks &rarr; Practice Twin.</div>
             </div>
           </div>
@@ -522,7 +730,7 @@ export default function HomePage() {
           <div className="mt-6 pt-4 border-t border-slate-800">
             <button
               type="button"
-              onClick={() => runMultimodalSolve('mockBase64ImageData')}
+              onClick={() => runMultimodalSolve('mockBase64ImageData', '3x^2 - 5x - 2 = 0')}
               disabled={transcribeLoading}
               className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 disabled:opacity-50"
             >
@@ -684,6 +892,20 @@ export default function HomePage() {
         isOpen={isCameraModalOpen}
         onClose={() => setIsCameraModalOpen(false)}
         onPhotoReceived={handlePhotoReceived}
+      />
+
+      {/* Phase 3: Equation Verification Modal */}
+      <EquationVerificationModal
+        isOpen={isVerificationModalOpen}
+        onClose={() => setIsVerificationModalOpen(false)}
+        segment={selectedSegment}
+        croppedImageUri={croppedSegmentUri}
+        pedagogicalLevel={pedagogicalLevel}
+        onChangePedagogicalLevel={setPedagogicalLevel}
+        languageMode={languageMode}
+        onChangeLanguageMode={setLanguageMode}
+        onConfirmAndSolve={handleConfirmAndSolve}
+        isSolving={transcribeLoading}
       />
     </main>
   );

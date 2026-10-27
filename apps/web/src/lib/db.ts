@@ -10,12 +10,18 @@ import { createClient, Client } from '@libsql/client';
 
 let dbInstance: Client | null = null;
 let isInitialized = false;
+let isUsingLocalFallback = false;
 
 export function getDb(): Client {
   if (dbInstance) return dbInstance;
 
-  const url = process.env.TURSO_DATABASE_URL || 'file:local.db';
-  const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
+  if (isUsingLocalFallback) {
+    dbInstance = createClient({ url: 'file:local.db' });
+    return dbInstance;
+  }
+
+  const url = process.env.TURSO_DATABASE_URL?.trim() || 'file:local.db';
+  const authToken = process.env.TURSO_AUTH_TOKEN?.trim() || undefined;
 
   dbInstance = createClient({
     url,
@@ -25,54 +31,66 @@ export function getDb(): Client {
   return dbInstance;
 }
 
+async function runSchemaMigrations(client: Client): Promise<void> {
+  // 1. Users table (Clerk user ID or anonymous guest ID)
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT,
+      name TEXT,
+      is_guest INTEGER DEFAULT 1,
+      credits INTEGER DEFAULT 50,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // 2. Camera pairing sessions table (desktop <-> mobile QR sync)
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS camera_sessions (
+      id TEXT PRIMARY KEY,
+      status TEXT DEFAULT 'pending',
+      image_data TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME
+    );
+  `);
+
+  // 3. Scan & diagnosis history
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS scan_history (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      raw_equation TEXT,
+      latex_equation TEXT,
+      topic TEXT,
+      waec_marks_earned INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+  `);
+}
+
 export async function initDb(): Promise<void> {
   if (isInitialized) return;
   const db = getDb();
 
   try {
-    // 1. Users table (Clerk user ID or anonymous guest ID)
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        email TEXT,
-        name TEXT,
-        is_guest INTEGER DEFAULT 1,
-        credits INTEGER DEFAULT 50,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // 2. Camera pairing sessions table (desktop <-> mobile QR sync)
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS camera_sessions (
-        id TEXT PRIMARY KEY,
-        status TEXT DEFAULT 'pending',
-        image_data TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        expires_at DATETIME
-      );
-    `);
-
-    // 3. Scan & diagnosis history
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS scan_history (
-        id TEXT PRIMARY KEY,
-        user_id TEXT,
-        raw_equation TEXT,
-        latex_equation TEXT,
-        topic TEXT,
-        waec_marks_earned INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-      );
-    `);
-
+    await runSchemaMigrations(db);
     isInitialized = true;
-    console.log('[DB] Turso / libSQL tables verified and ready.');
+    console.log(
+      `[DB] ${isUsingLocalFallback ? 'Local SQLite (offline fallback)' : 'Turso / libSQL'} tables verified and ready.`
+    );
   } catch (err) {
-    console.error('[DB] Failed to initialize database schemas:', err);
-    throw err;
+    console.warn(
+      '[DB] Remote Turso connection failed or offline. Failing over to local SQLite (file:local.db):',
+      err instanceof Error ? err.message : err
+    );
+    isUsingLocalFallback = true;
+    dbInstance = createClient({ url: 'file:local.db' });
+    await runSchemaMigrations(dbInstance);
+    isInitialized = true;
+    console.log('[DB] Local SQLite (file:local.db) failover ready.');
   }
 }
 

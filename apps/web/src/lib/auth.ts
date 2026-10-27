@@ -12,12 +12,23 @@ import { getOrCreateUser, UserRecord, deductUserCredits } from '@/lib/db';
 
 const GUEST_COOKIE_NAME = 'solvam_guest_id';
 
+export function isClerkConfigured(): boolean {
+  const pubKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim();
+  const secKey = process.env.CLERK_SECRET_KEY?.trim();
+  return Boolean(
+    pubKey &&
+      secKey &&
+      (pubKey.startsWith('pk_test_') || pubKey.startsWith('pk_live_')) &&
+      (secKey.startsWith('sk_test_') || secKey.startsWith('sk_live_'))
+  );
+}
+
 export async function getCurrentUserOrGuest(): Promise<UserRecord> {
   const cookieStore = await cookies();
   let guestId = cookieStore.get(GUEST_COOKIE_NAME)?.value;
 
-  // Check if Clerk is configured and user is authenticated
-  if (process.env.CLERK_SECRET_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  // Check if Clerk is configured with valid keys and user is authenticated
+  if (isClerkConfigured()) {
     try {
       const { auth, currentUser } = await import('@clerk/nextjs/server');
       const { userId } = await auth();

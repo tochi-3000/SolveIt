@@ -1,13 +1,25 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import type { NextRequest, NextFetchEvent } from 'next/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 
-export function middleware(req: NextRequest) {
-  // Production Safeguard: If Clerk credentials exist, protect or attach auth
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY) {
-    try {
-      const { clerkMiddleware } = require('@clerk/nextjs/server');
-      return clerkMiddleware()(req);
-    } catch (_) {}
+const hasValidClerkKeys = (): boolean => {
+  const pubKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim();
+  const secKey = process.env.CLERK_SECRET_KEY?.trim();
+  return Boolean(
+    pubKey &&
+      secKey &&
+      (pubKey.startsWith('pk_test_') || pubKey.startsWith('pk_live_')) &&
+      (secKey.startsWith('sk_test_') || secKey.startsWith('sk_live_'))
+  );
+};
+
+const clerkHandler = clerkMiddleware();
+
+export default function middleware(req: NextRequest, event: NextFetchEvent) {
+  // Production Safeguard: Only invoke Clerk Edge Middleware when valid keys are configured.
+  // Prevents runtime crashes in Guest/Judge fallback mode while properly forwarding NextFetchEvent.
+  if (hasValidClerkKeys()) {
+    return clerkHandler(req, event);
   }
 
   return NextResponse.next();

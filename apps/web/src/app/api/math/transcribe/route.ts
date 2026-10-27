@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
       imageBase64, 
       pedagogicalLevel = 'intermediate', 
       languageMode = 'standard',
-      provider = 'meta'
+      provider = 'meta',
+      verifiedEquation
     } = body;
 
     if (!imageBase64 || typeof imageBase64 !== 'string') {
@@ -19,13 +20,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Deduct 1 credit for AI vision solve
-    await deductCurrentCredits(1);
-
     const aiProvider = getAIProvider(provider);
-    const result = await aiProvider.transcribeAndSolve(imageBase64, pedagogicalLevel, languageMode);
+    const result = await aiProvider.transcribeAndSolve(
+      imageBase64, 
+      pedagogicalLevel, 
+      languageMode,
+      verifiedEquation
+    );
 
-    return NextResponse.json(result);
+    // Production Safeguard: Deduct 1 credit only after AI vision solve succeeds
+    const remainingCredits = await deductCurrentCredits(1).catch((creditErr) => {
+      console.warn('[Credits] Non-fatal error deducting credits:', creditErr);
+      return undefined;
+    });
+
+    return NextResponse.json({
+      ...result,
+      remainingCredits,
+    });
   } catch (err: any) {
     console.error('API /api/math/transcribe failed:', err);
     return NextResponse.json(

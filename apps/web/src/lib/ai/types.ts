@@ -62,6 +62,7 @@ export interface IMathVisionProvider {
   transcribeAndSolve(
     imageBase64: string,
     level?: PedagogicalLevel,
-    language?: LanguageMode
+    language?: LanguageMode,
+    verifiedEquation?: string
   ): Promise<TranscriptionAndSolveResult>;
 }

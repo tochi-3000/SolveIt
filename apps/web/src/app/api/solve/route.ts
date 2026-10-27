@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { solveSymbolicEquation } from '@/lib/symbolicClient';
+import { deductCurrentCredits } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +15,17 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await solveSymbolicEquation(equation, solveFor);
-    return NextResponse.json(result);
+
+    // Production Safeguard: Persist credit deduction in Turso/libSQL only after a successful solve
+    const remainingCredits = await deductCurrentCredits(1).catch((creditErr) => {
+      console.warn('[Credits] Non-fatal error deducting credits:', creditErr);
+      return undefined;
+    });
+
+    return NextResponse.json({
+      ...result,
+      remainingCredits,
+    });
   } catch (err: any) {
     console.error('API /api/solve error:', err);
     return NextResponse.json(
