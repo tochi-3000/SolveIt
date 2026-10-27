@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolvAm — System Documentation & Replication Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    :root {
+      --bg-base: #020617;
+      --bg-card: rgba(15, 23, 42, 0.75);
+      --bg-card-hover: rgba(30, 41, 59, 0.85);
+      --border-subtle: rgba(51, 65, 85, 0.6);
+      --border-highlight: rgba(16, 185, 129, 0.4);
+      --accent-emerald: #10b981;
+      --accent-emerald-light: #34d399;
+      --accent-emerald-glow: rgba(16, 185, 129, 0.15);
+      --accent-amber: #f59e0b;
+      --accent-sky: #0ea5e9;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --code-bg: #090d16;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.65;
+      padding: 40px 20px 80px;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.05) 0%, transparent 40%);
+      background-attachment: fixed;
+    }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    /* Header / Hero */
+    header {
+      text-align: center;
+      margin-bottom: 50px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border-subtle);
+      position: relative;
+    }
+
+    .badge-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--accent-emerald-light);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 2.85rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 24px;
+      font-weight: 400;
+    }
+
+    .pill-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .pill {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #0f172a;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+    }
+
+    .pill.tech {
+      border-color: rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+    }
+
+    /* Sections */
+    section {
+      margin-bottom: 45px;
+    }
+
+    h2 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-main);
+    }
+
+    h2 i {
+      color: var(--accent-emerald);
+      width: 24px;
+      height: 24px;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 24px 0 12px;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      font-size: 0.95rem;
+    }
+
+    /* Cards & Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--border-highlight);
+      transform: translateY(-2px);
+    }
+
+    .card h4 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p {
+      font-size: 0.88rem;
+      margin-bottom: 0;
+      color: var(--text-muted);
+    }
+
+    .card .icon-wrap {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--accent-emerald-glow);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-emerald-light);
+      margin-bottom: 14px;
+    }
+
+    /* Architecture Visual */
+    .arch-flow {
+      background: var(--code-bg);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .flow-node {
+      background: #131d31;
+      border: 1px solid #233554;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      color: #93c5fd;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .flow-node.primary {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #6ee7b7;
+    }
+
+    .flow-node.highlight {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fcd34d;
+    }
+
+    .flow-arrow {
+      color: var(--text-dim);
+      font-weight: 700;
+    }
+
+    /* Code Blocks & Command Snippets */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84rem;
+      color: #e2e8f0;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+      color: #38bdf8;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      border: none;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .comment { color: #64748b; }
+    .keyword { color: #f472b6; }
+    .string { color: #a7f3d0; }
+    .flag { color: #fbbf24; }
+
+    /* Step Sequence */
+    .steps-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 18px;
+    }
+
+    .step-number {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent-emerald-glow);
+      border: 1px solid var(--accent-emerald);
+      color: var(--accent-emerald-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-content h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    /* Callout Alert */
+    .callout {
+      background: rgba(16, 185, 129, 0.08);
+      border-left: 4px solid var(--accent-emerald);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 16px 20px;
+      margin: 18px 0;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .callout i {
+      color: var(--accent-emerald);
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .callout p {
+      margin-bottom: 0;
+      font-size: 0.9rem;
+      color: #cbd5e1;
+    }
+
+    /* Tabs/OS Toggle */
+    .os-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .tab-btn {
+      background: #0f172a;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--accent-emerald);
+      color: var(--accent-emerald-light);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding-top: 40px;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    /* Copy Button */
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: var(--border-subtle);
+      color: #fff;
+    }
+
+    @media (max-width: 640px) {
+      h1 { font-size: 2.1rem; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .flow-row { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- Hero Header -->
+    <header>
+      <div class="badge-bar">
+        <i data-lucide="award"></i> Meta AI Hackathon 2026 — Track 1: Build for Your World
+      </div>
+      <h1>SolvAm <span>(SolveAm)</span></h1>
+      <p class="tagline">
+        Zero-Hallucination Neuro-Symbolic Math Tutor & "Red-Pen" Handwritten WAEC Diagnostic Grader engineered for West African SSCE/WASSCE students.
+      </p>
+
+      <div class="pill-badges">
+        <span class="pill tech"><i data-lucide="layers"></i> Next.js 15 App Router</span>
+        <span class="pill tech"><i data-lucide="workflow"></i> Turborepo</span>
+        <span class="pill tech"><i data-lucide="cpu"></i> FastAPI + SymPy CAS</span>
+        <span class="pill tech"><i data-lucide="database"></i> Turso libSQL</span>
+        <span class="pill tech"><i data-lucide="shield-check"></i> Clerk Auth</span>
+        <span class="pill"><i data-lucide="wifi-off"></i> Zero-Key / Offline Resilient</span>
+      </div>
+    </header>
+
+    <!-- Project Overview -->
+    <section>
+      <h2><i data-lucide="compass"></i> Why SolvAm?</h2>
+      <p>
+        Over <strong>729,429 students fail WASSCE / SSCE mathematics annually in West Africa</strong>. Mainstream AI tutors fail them because large multimodal models hallucinate arithmetic, skip intermediate working, and offer no rubric-aligned partial credit diagnosis.
+      </p>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="icon-wrap"><i data-lucide="calculator"></i></div>
+          <h4>Deterministic Equivalence</h4>
+          <p>Combines multimodal vision with deterministic Python <code>SymPy</code> Algebraic Syntax Tree (AST) validation. Eliminates hallucinated roots.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon-wrap"><i data-lucide="pen-tool"></i></div>
+          <h4>"Red-Pen" Grader</h4>
+          <p>Students solve problems on paper. SolvAm scans their sequential handwritten work and isolates the exact line where mathematical equivalence broke.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon-wrap"><i data-lucide="check-check"></i></div>
+          <h4>WAEC M1/A1 Marks</h4>
+          <p>Grades using official marking rubrics: <strong>Method Marks (M1)</strong> and <strong>Accuracy Marks (A1)</strong>, teaching students how examiners award partial credit.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon-wrap"><i data-lucide="smartphone"></i></div>
+          <h4>Mobile QR Camera Lens</h4>
+          <p>Scan a QR code from any smartphone to pair the phone camera with the desktop workspace in real-time using Native Server-Sent Events (SSE).</p>
+        </div>
+
+        <div class="card">
+          <div class="icon-wrap"><i data-lucide="sparkles"></i></div>
+          <h4>Parametric Twins</h4>
+          <p>Generates infinite verified practice questions with guaranteed clean integer roots using the parametric question engine.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon-wrap"><i data-lucide="wifi-off"></i></div>
+          <h4>Offline-First Resilience</h4>
+          <p>Graceful circuit breakers fail over automatically from Turso Cloud to local SQLite (<code>file:local.db</code>) and remote Meta AI to local SymPy.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture Visual -->
+    <section>
+      <h2><i data-lucide="network"></i> Neuro-Symbolic Architecture</h2>
+      <div class="arch-flow">
+        <div class="flow-row">
+          <div class="flow-node">📸 Phone Camera Lens<br><small style="color:#64748b">Canvas &lt;150KB Optimizer</small></div>
+          <span class="flow-arrow">──(SSE / QR Bridge)──▶</span>
+          <div class="flow-node primary">🖥️ Next.js 15 Web Workspace<br><small style="color:#6ee7b7">Adaptive Tutor &amp; Telemetry HUD</small></div>
+        </div>
+
+        <div class="flow-row">
+          <div class="flow-node primary">🧠 Agentic Tool Loop<br><small style="color:#6ee7b7">Meta Muse Spark 1.3 Provider</small></div>
+          <span class="flow-arrow">──(HTTP POST :8000)──▶</span>
+          <div class="flow-node highlight">⚡ Deterministic Symbolic Engine<br><small style="color:#fcd34d">FastAPI + SymPy AST Guard</small></div>
+        </div>
+
+        <div class="flow-row">
+          <div class="flow-node">🔐 Clerk Auth &amp; Turso DB<br><small style="color:#64748b">Synced Users &amp; Credit Ledger</small></div>
+          <span class="flow-arrow">──(Offline Fallback)──▶</span>
+          <div class="flow-node">💾 Local SQLite (`file:local.db`)<br><small style="color:#64748b">Zero-Downtime Autonomous Run</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step-by-Step Setup Guide -->
+    <section>
+      <h2><i data-lucide="terminal"></i> How to Replicate &amp; Run the Repository</h2>
+      
+      <div class="steps-container">
+
+        <!-- Step 1 -->
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Clone the Repository</h4>
+            <p>Clone the source repository and navigate into the root project directory:</p>
+            <pre><code><span class="comment"># Clone project</span>
+git clone https://github.com/your-username/SolveAm.git
+cd SolveAm</code></pre>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Install Monorepo Dependencies</h4>
+            <p>Install all workspace packages (Next.js 15, Turborepo, shared types, KaTeX, etc.) at the monorepo root:</p>
+            <pre><code>npm install</code></pre>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Configure the Python Symbolic CAS Engine</h4>
+            <p>Create an isolated virtual environment for the deterministic FastAPI/SymPy microservice:</p>
+
+            <div class="os-tabs">
+              <span class="tab-btn active">Windows (PowerShell)</span>
+            </div>
+            <pre><code>cd services/symbolic-engine
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+cd ../..</code></pre>
+
+            <p style="font-size:0.85rem; color:#64748b;">On macOS/Linux, run: <code>python3 -m venv venv &amp;&amp; source venv/bin/activate &amp;&amp; pip install -r requirements.txt &amp;&amp; cd ../..</code></p>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step-item">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>Set Up Environment Variables</h4>
+            <p>Duplicate the documented example environment file in <code>apps/web</code>:</p>
+            <pre><code>cp apps/web/.env.example apps/web/.env.local</code></pre>
+
+            <div class="callout">
+              <i data-lucide="info"></i>
+              <div>
+                <strong>Zero-Configuration Ready:</strong> SolvAm has baked-in production fallbacks. Even with completely blank keys in <code>.env.local</code>, the app will execute with full local SQLite storage, 50 guest credits, and local SymPy step solving!
+              </div>
+            </div>
+
+            <p>If you have live credentials, fill in <code>apps/web/.env.local</code>:</p>
+            <pre><code><span class="comment"># 1. Clerk Authentication</span>
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+<span class="comment"># 2. Turso Database (Defaults to local SQLite 'file:local.db' if empty or offline)</span>
+TURSO_DATABASE_URL="file:local.db"
+TURSO_AUTH_TOKEN=
+
+<span class="comment"># 3. Deterministic Symbolic Engine</span>
+SYMBOLIC_ENGINE_URL="http://localhost:8000"
+NEXT_PUBLIC_SYMBOLIC_ENGINE_URL="http://localhost:8000"
+
+<span class="comment"># 4. Meta AI Model API</span>
+META_API_KEY=
+META_API_URL="https://api.meta.ai/v1/chat/completions"</code></pre>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step-item">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <h4>Start the Application</h4>
+            <p>Open two terminal windows from the repository root:</p>
+
+            <p><strong>Terminal 1: Start the Python Deterministic Symbolic Engine (Port 8000)</strong></p>
+            <pre><code>npm run dev:symbolic</code></pre>
+
+            <p><strong>Terminal 2: Start the Next.js Web App via Turborepo (Port 3000)</strong></p>
+            <pre><code>npm run dev</code></pre>
+
+            <p>Turborepo will topologically build <code>@solvam/shared-types</code> and boot Next.js on <code>http://localhost:3000</code> (listening on <code>0.0.0.0</code> so phones can connect over Wi-Fi).</p>
+          </div>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="step-item">
+          <div class="step-number">6</div>
+          <div class="step-content">
+            <h4>Connect Your Phone Camera (QR Bridge)</h4>
+            <p>
+              1. Open <code>http://localhost:3000</code> in your browser.<br>
+              2. Ensure your phone and PC are on the <strong>same Wi-Fi or mobile hotspot</strong>.<br>
+              3. Click <strong>"Scan with Phone (QR)"</strong>. The QR code automatically resolves your PC's LAN IP (e.g. <code>http://192.168.x.x:3000/capture?session=...</code>).<br>
+              4. Snap your handwritten equation on paper and watch it beam to your desktop screen in real-time.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Verification / Build -->
+    <section>
+      <h2><i data-lucide="check-circle-2"></i> Production Build Verification</h2>
+      <p>Verify strict TypeScript compilation, linting, and Next.js optimization across the monorepo:</p>
+      <pre><code>npm run build</code></pre>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>SolvAm Monorepo &bull; Engineering Educational Equity for West Africa &bull; Meta AI Hackathon 2026</p>
+    </footer>
+
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>

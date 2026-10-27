@@ -55,7 +55,7 @@ function renderKatexHtml(latex: string, isBlock: boolean): string {
     });
   } catch (err) {
     console.warn("KaTeX render error on:", latex, err);
-    return `<span class="text-rose-400 font-mono text-sm">${latex}</span>`;
+    return `<span class="text-rose-600 font-mono text-sm">${latex}</span>`;
   }
 }
 
@@ -66,8 +66,15 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({ value, className = "",
     // Check if entire string is pure LaTeX without delimiters
     const hasDelimiters = /(?:\$\$|\\\[|\\\(|\$)/.test(value);
     if (!hasDelimiters) {
-      // If displayMode is forced or string contains obvious LaTeX syntax (\frac, \sqrt, ^, _)
-      if (displayMode || /\\(frac|sqrt|pm|times|cdot|\^|_)/.test(value)) {
+      // Production Safeguard: Detect all standard LaTeX commands (\quad, \text, \left, \right, \implies, \Delta, etc.)
+      const hasLatexSyntax =
+        displayMode ||
+        /\\(frac|sqrt|pm|times|cdot|quad|qquad|text|left|right|implies|Rightarrow|Delta|alpha|beta|theta|leq|geq|neq|\^|_)/.test(
+          value
+        ) ||
+        /[a-zA-Z0-9]\^[a-zA-Z0-9{]/.test(value);
+
+      if (hasLatexSyntax) {
         return (
           <span
             dangerouslySetInnerHTML={{ __html: renderKatexHtml(value, displayMode) }}

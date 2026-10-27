@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { SAMSegment, BoundingBox } from '@solvam/shared-types';
 import MathDisplay from './MathDisplay';
-import { Sparkles, Scan, Move, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Sparkles, Scan, Move, CheckCircle2, ChevronRight, Info } from 'lucide-react';
 
 interface SamSegmentationCanvasProps {
   imageUrl: string;
@@ -26,12 +26,10 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
   const [hoveredSegmentId, setHoveredSegmentId] = useState<string | null>(null);
   const [manualMode, setManualMode] = useState<boolean>(false);
 
-  // Manual Drag Box State
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [currentDragBox, setCurrentDragBox] = useState<BoundingBox | null>(null);
 
-  // Handle Mouse / Touch down for manual bounding box
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!manualMode || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -61,7 +59,6 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
     if (!isDragging || !currentDragBox) return;
     setIsDragging(false);
 
-    // If box has meaningful area (> 2% width & height)
     if (
       currentDragBox.xMax - currentDragBox.xMin > 0.03 &&
       currentDragBox.yMax - currentDragBox.yMin > 0.03
@@ -69,7 +66,6 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
       if (onCustomCrop) {
         onCustomCrop(currentDragBox);
       }
-      // Create ephemeral custom segment
       const customSeg: SAMSegment = {
         id: `custom_${Date.now()}`,
         label: 'Custom Selected Problem Region',
@@ -85,38 +81,40 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6 animate-fadeIn">
+    <div className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-7 space-y-6 animate-fadeIn">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
-            <Sparkles className="w-4 h-4" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
+            <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
             <span>Meta SAM 3.1 Multi-Equation Perception</span>
           </div>
-          <h3 className="text-xl font-black text-white mt-1">Interactive Page Segmentation</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Tap any glowing equation box to isolate and solve that specific problem.
+          <h3 className="text-lg font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+            Interactive Page Segmentation
+          </h3>
+          <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-0.5 leading-[1.6]">
+            Select any isolated equation mask on the exam sheet or pick from the detected list on the right.
           </p>
         </div>
 
         {/* Manual Drag Toggle Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={() => setManualMode(!manualMode)}
-            className={`px-3.5 py-2 text-xs font-bold rounded-xl border transition flex items-center gap-2 ${
+            className={`px-3.5 py-2 text-xs font-semibold rounded-[8px] transition flex items-center gap-2 ${
               manualMode
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-lg shadow-amber-950'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                ? 'bg-[#2563eb] text-white shadow-sm'
+                : 'bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd]'
             }`}
           >
-            <Move className="w-4 h-4" />
-            <span>{manualMode ? 'Cancel Manual Box' : 'Drag Custom Box'}</span>
+            <Move className="w-3.5 h-3.5" />
+            <span>{manualMode ? 'Cancel Manual Box' : 'Drag Custom Region'}</span>
           </button>
 
-          <span className="text-xs font-mono px-3 py-1.5 bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 rounded-xl flex items-center gap-1.5">
-            <Scan className="w-3.5 h-3.5" />
-            <span>{segments.length} Equations Isolated</span>
+          <span className="text-xs font-mono font-semibold px-3 py-2 bg-white dark:bg-[#0b1120] text-[#1e3a8a] dark:text-[#93c5fd] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] flex items-center gap-1.5">
+            <Scan className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+            <span>{segments.length} Equations</span>
           </span>
         </div>
       </div>
@@ -124,13 +122,13 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
       {/* Main Canvas Area */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Visual Image with Bounding Boxes (8 cols) */}
-        <div className="lg:col-span-8 flex justify-center">
+        <div className="lg:col-span-8 flex justify-center bg-white dark:bg-[#0b1120] rounded-[12px] p-4 border border-[#e2e8f0] dark:border-[#1e293b]">
           <div
             ref={containerRef}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            className={`relative max-w-full rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl select-none ${
+            className={`relative max-w-full rounded-[8px] overflow-hidden border border-[#e2e8f0] dark:border-[#1e293b] select-none bg-white ${
               manualMode ? 'cursor-crosshair' : 'cursor-default'
             }`}
             style={{ touchAction: 'none' }}
@@ -140,16 +138,16 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
             <img
               src={imageUrl}
               alt="WAEC Exam Sheet"
-              className="w-full h-auto block max-h-[720px] object-contain bg-slate-950"
+              className="w-full h-auto block max-h-[700px] object-contain bg-white"
               draggable={false}
             />
 
             {/* Loading Overlay */}
             {isLoading && (
-              <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-30">
-                <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm font-semibold text-emerald-300">
-                  Meta SAM 3.1 Segmenting Page...
+              <div className="absolute inset-0 bg-white/85 dark:bg-[#0b1120]/85 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-30">
+                <div className="w-9 h-9 border-3 border-[#2563eb] border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
+                  Meta SAM 3.1 Segmenting Exam Sheet...
                 </span>
               </div>
             )}
@@ -171,34 +169,31 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
                     onClick={() => onSelectSegment(seg)}
                     onMouseEnter={() => setHoveredSegmentId(seg.id)}
                     onMouseLeave={() => setHoveredSegmentId(null)}
-                    className={`absolute transition-all duration-200 cursor-pointer rounded-lg ${
+                    className={`absolute transition-all duration-150 cursor-pointer rounded-[8px] ${
                       isSelected
-                        ? 'border-2 border-emerald-400 bg-emerald-500/25 shadow-lg shadow-emerald-500/30 z-20'
+                        ? 'border-2 border-[#2563eb] bg-[#2563eb]/15 shadow-md z-20'
                         : isHovered
-                        ? 'border-2 border-amber-400 bg-amber-400/20 shadow-md shadow-amber-500/20 z-10 scale-[1.005]'
-                        : 'border-2 border-dashed border-emerald-500/60 bg-emerald-500/10 hover:border-emerald-400'
+                        ? 'border-2 border-[#2563eb] bg-[#dbeafe]/45 z-10'
+                        : 'border border-dashed border-[#2563eb]/70 bg-[#dbeafe]/20 hover:border-[#2563eb]'
                     }`}
                     style={{ top, left, width, height }}
                   >
-                    {/* Floating Label Badge */}
                     <div
-                      className={`absolute -top-3.5 left-2 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-tight flex items-center gap-1 transition-all ${
+                      className={`absolute -top-3 left-2 px-2 py-0.5 rounded-[8px] text-[10px] font-semibold font-mono tracking-tight flex items-center gap-1 transition-all ${
                         isSelected
-                          ? 'bg-emerald-500 text-slate-950 shadow-md'
+                          ? 'bg-[#2563eb] text-white shadow-sm'
                           : isHovered
-                          ? 'bg-amber-400 text-slate-950 shadow-md'
-                          : 'bg-slate-900/90 text-emerald-300 border border-emerald-500/40 backdrop-blur'
+                          ? 'bg-[#1e3a8a] text-white shadow-sm'
+                          : 'bg-white text-[#1e3a8a] border border-[#dbeafe] shadow-sm'
                       }`}
                     >
-                      <Sparkles className="w-3 h-3" />
                       <span>{seg.label}</span>
                       <span className="opacity-80">({Math.round(seg.confidence * 100)}%)</span>
                     </div>
 
-                    {/* Checkmark indicator when selected */}
                     {isSelected && (
-                      <div className="absolute top-2 right-2 p-1 bg-emerald-500 text-slate-950 rounded-full shadow-lg">
-                        <CheckCircle2 className="w-4 h-4" />
+                      <div className="absolute top-2 right-2 p-1 bg-[#2563eb] text-white rounded-full shadow-sm">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
                       </div>
                     )}
                   </div>
@@ -208,7 +203,7 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
             {/* Manual Dragging Box Visualization */}
             {manualMode && currentDragBox && (
               <div
-                className="absolute border-2 border-amber-400 bg-amber-500/20 rounded z-30 pointer-events-none"
+                className="absolute border-2 border-[#2563eb] bg-[#dbeafe]/40 rounded-[8px] z-30 pointer-events-none"
                 style={{
                   top: `${currentDragBox.yMin * 100}%`,
                   left: `${currentDragBox.xMin * 100}%`,
@@ -216,7 +211,7 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
                   height: `${(currentDragBox.yMax - currentDragBox.yMin) * 100}%`,
                 }}
               >
-                <div className="absolute -top-3 left-1 px-1.5 py-0.5 bg-amber-400 text-slate-950 text-[10px] font-bold rounded">
+                <div className="absolute -top-3 left-1 px-2 py-0.5 bg-[#2563eb] text-white text-[10px] font-semibold rounded-[8px]">
                   Release to Select
                 </div>
               </div>
@@ -227,13 +222,17 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
         {/* Right Column: Equation Selector List & Preview (4 cols) */}
         <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
           <div className="space-y-3">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span>Segmented Equations ({segments.length})</span>
+            <div className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase tracking-wider flex items-center justify-between">
+              <span>Detected Questions ({segments.length})</span>
+              <span className="text-[11px] font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
+                Select to Solve
+              </span>
             </div>
 
-            <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
               {segments.map((seg, idx) => {
                 const isSelected = selectedSegmentId === seg.id;
+                const stepNum = String(idx + 1).padStart(2, '0');
                 return (
                   <button
                     key={seg.id}
@@ -241,44 +240,46 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
                     onClick={() => onSelectSegment(seg)}
                     onMouseEnter={() => setHoveredSegmentId(seg.id)}
                     onMouseLeave={() => setHoveredSegmentId(null)}
-                    className={`w-full text-left p-3.5 rounded-2xl border transition flex flex-col gap-2 ${
+                    className={`w-full text-left p-4 rounded-[12px] border transition flex flex-col gap-3 ${
                       isSelected
-                        ? 'bg-emerald-950/40 border-emerald-500/80 shadow-lg shadow-emerald-950'
-                        : 'bg-slate-950/60 hover:bg-slate-800/60 border-slate-800 text-slate-300'
+                        ? 'bg-[#e0f0fe] dark:bg-[#1e293b] border-[#2563eb]/40 dark:border-[#3b82f6]/50 shadow-sm'
+                        : 'bg-white dark:bg-[#0b1120] hover:bg-[#f0f5fa] dark:hover:bg-[#1e293b]/60 border-[#e2e8f0] dark:border-[#1e293b] text-[#0f172a] dark:text-[#f8fafc]'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <span
-                          className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center ${
+                          className={`px-2 py-0.5 rounded-[8px] font-mono text-xs font-semibold flex-shrink-0 ${
                             isSelected
-                              ? 'bg-emerald-500 text-slate-950'
-                              : 'bg-slate-800 text-slate-300'
+                              ? 'bg-[#2563eb] text-white'
+                              : 'bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd]'
                           }`}
                         >
-                          Q{idx + 1}
+                          {stepNum}
                         </span>
-                        <span className="text-xs font-bold text-white line-clamp-1">{seg.label}</span>
+                        <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] truncate">
+                          {seg.label}
+                        </span>
                       </div>
-                      <span className="text-[10px] font-mono text-emerald-400 font-semibold">
+                      <span className="text-[10px] font-mono text-[#1e3a8a] dark:text-[#93c5fd] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 px-2 py-0.5 rounded-[8px] font-semibold flex-shrink-0">
                         {Math.round(seg.confidence * 100)}%
                       </span>
                     </div>
 
                     {seg.latexPreview && (
-                      <div className="p-2 bg-slate-900/80 rounded-xl text-center border border-slate-800/80 overflow-x-auto">
+                      <div className="py-3 px-3 bg-white dark:bg-[#0f172a] rounded-[8px] text-center border border-[#e2e8f0]/80 dark:border-[#1e293b] overflow-x-auto">
                         <MathDisplay
                           value={seg.latexPreview}
                           displayMode
-                          className="text-xs text-emerald-300 font-semibold"
+                          className="text-xs text-[#0f172a] dark:text-[#f8fafc] font-semibold"
                         />
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
-                      <span>Meta SAM 3.1 Box</span>
-                      <span className="flex items-center gap-0.5 text-emerald-400 font-medium">
-                        Select & Solve <ChevronRight className="w-3 h-3" />
+                    <div className="flex items-center justify-between text-[11px] text-[#64748b] dark:text-[#94a3b8]">
+                      <span>SAM 3.1 Region</span>
+                      <span className="flex items-center gap-0.5 text-[#2563eb] dark:text-[#60a5fa] font-semibold">
+                        Verify Formula <ChevronRight className="w-3.5 h-3.5" />
                       </span>
                     </div>
                   </button>
@@ -287,11 +288,10 @@ export const SamSegmentationCanvas: React.FC<SamSegmentationCanvasProps> = ({
             </div>
           </div>
 
-          {/* Quick Info Box */}
-          <div className="p-3.5 bg-slate-950/90 rounded-2xl border border-slate-800 text-xs text-slate-400 flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <div className="p-3.5 bg-[#dbeafe]/55 dark:bg-[#1e3a8a]/30 rounded-[8px] text-xs text-[#1e3a8a] dark:text-[#93c5fd] flex items-start gap-2.5 leading-[1.6]">
+            <Info className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa] flex-shrink-0 mt-0.5" />
             <span>
-              <strong>Perception Invariant:</strong> SAM 3.1 runs page segmentation with 0% arithmetic hallucination risk. Mathematical computation is strictly reserved for SymPy.
+              <strong>Zero-Hallucination Invariant:</strong> SAM 3.1 isolates regions visually while exact roots are verified by SymPy AST.
             </span>
           </div>
         </div>

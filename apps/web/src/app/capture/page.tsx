@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Camera, CheckCircle2, RefreshCw, Upload, AlertCircle, Smartphone } from 'lucide-react';
+import { Camera, CheckCircle2, RefreshCw, AlertCircle, Smartphone } from 'lucide-react';
 
 function CaptureContent() {
   const searchParams = useSearchParams();
@@ -16,7 +16,6 @@ function CaptureContent() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Notify desktop that phone has connected
   useEffect(() => {
     if (!sessionId) {
       setError('Invalid or missing camera session token.');
@@ -39,7 +38,6 @@ function CaptureContent() {
     notifyConnected();
   }, [sessionId]);
 
-  // Client-side canvas compression (<150KB, max 1600x1600)
   const processAndUploadFile = (file: File) => {
     setUploading(true);
     setError(null);
@@ -74,7 +72,6 @@ function CaptureContent() {
         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
         setPhotoPreview(compressedBase64);
 
-        // Upload to session
         uploadToDesktop(compressedBase64);
       };
       img.src = e.target?.result as string;
@@ -96,9 +93,10 @@ function CaptureContent() {
       }
 
       setSuccess(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to beam photo to computer';
       console.error(err);
-      setError(err.message || 'Failed to beam photo to computer');
+      setError(msg);
     } finally {
       setUploading(false);
     }
@@ -111,56 +109,57 @@ function CaptureContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-6 max-w-md mx-auto">
+    <div className="min-h-screen bg-[#f4f8fd] text-slate-900 flex flex-col justify-between p-6 max-w-md mx-auto">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 mb-2">
+          <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+          <span className="text-xs font-bold uppercase tracking-wider text-sky-700 font-mono">
             SolvAm Phone Lens
           </span>
         </div>
-        <h1 className="text-2xl font-extrabold text-white">Camera Bridge</h1>
-        <p className="text-xs text-slate-400 mt-1">
-          {connected ? 'Connected to desktop computer. Ready to snap.' : 'Connecting to desktop...'}
+        <h1 className="text-2xl font-extrabold text-slate-900">Camera Bridge</h1>
+        <p className="text-xs text-slate-500 mt-1">
+          {connected ? 'Connected to desktop workspace. Ready to snap.' : 'Connecting to desktop...'}
         </p>
       </div>
 
       {/* Main View Area */}
       <div className="my-8 flex flex-col items-center justify-center">
         {error && (
-          <div className="p-4 bg-rose-950/40 border border-rose-800/60 rounded-2xl flex items-center gap-3 text-rose-300 text-sm mb-6 w-full">
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm mb-6 w-full">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {photoPreview ? (
-          <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 bg-slate-900 shadow-2xl">
+          <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden border border-sky-200 bg-white shadow-soft">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoPreview} alt="Captured Math" className="w-full h-full object-cover" />
             {uploading && (
-              <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
-                <span className="text-sm font-semibold text-white">Beaming to Desktop...</span>
+              <div className="absolute inset-0 bg-white/85 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                <RefreshCw className="w-8 h-8 text-sky-600 animate-spin" />
+                <span className="text-sm font-bold text-slate-900">Beaming to Desktop...</span>
               </div>
             )}
             {success && (
-              <div className="absolute inset-0 bg-emerald-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-6 text-center animate-fadeIn">
-                <CheckCircle2 className="w-12 h-12 text-emerald-400" />
-                <span className="text-lg font-bold text-white">Beamed to Computer!</span>
-                <p className="text-xs text-slate-300">
-                  Your photo is now loaded on your desktop screen.
+              <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center gap-3 p-6 text-center animate-fadeIn">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                <span className="text-lg font-extrabold text-slate-900">Beamed to Computer!</span>
+                <p className="text-xs text-slate-500">
+                  Your exam sheet is now segmented on your desktop screen.
                 </p>
               </div>
             )}
           </div>
         ) : (
-          <div className="w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
-              <Camera className="w-8 h-8 text-emerald-400" />
+          <div className="w-full aspect-[3/4] rounded-3xl border-2 border-dashed border-sky-200 bg-white flex flex-col items-center justify-center p-6 text-center shadow-soft">
+            <div className="w-16 h-16 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center mb-4">
+              <Camera className="w-8 h-8 text-sky-600" />
             </div>
-            <h3 className="font-bold text-slate-200">Snap WAEC Problem</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-[220px]">
+            <h3 className="font-bold text-slate-900">Snap WAEC Problem</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-[220px]">
               Point your phone at textbook questions or your handwritten solution on paper.
             </p>
           </div>
@@ -169,7 +168,6 @@ function CaptureContent() {
 
       {/* Action Buttons */}
       <div className="space-y-3">
-        {/* Hidden Native Camera Input */}
         <input
           type="file"
           accept="image/*"
@@ -184,7 +182,7 @@ function CaptureContent() {
             type="button"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold rounded-2xl transition flex items-center justify-center gap-3 shadow-xl shadow-emerald-950 disabled:opacity-50 text-base"
+            className="w-full py-4 bg-sky-600 hover:bg-sky-500 active:scale-[0.98] text-white font-bold rounded-2xl transition flex items-center justify-center gap-3 shadow-lg shadow-sky-500/25 disabled:opacity-50 text-base"
           >
             <Camera className="w-6 h-6" />
             <span>{photoPreview ? 'Retake Photo' : 'Open Camera & Snap'}</span>
@@ -197,16 +195,16 @@ function CaptureContent() {
               setSuccess(false);
               fileInputRef.current?.click();
             }}
-            className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-2xl transition flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-white hover:bg-sky-50 border border-sky-200 text-sky-700 font-bold rounded-2xl transition flex items-center justify-center gap-2 shadow-sm"
           >
             <Camera className="w-5 h-5" />
             <span>Snap Another Problem</span>
           </button>
         )}
 
-        <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400">
-          <Smartphone className="w-3.5 h-3.5 text-slate-400" />
-          <span>Session Token: <code className="font-mono text-emerald-400">{sessionId || '...'}</code></span>
+        <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500">
+          <Smartphone className="w-3.5 h-3.5 text-sky-500" />
+          <span>Session Token: <code className="font-mono text-sky-700 font-semibold">{sessionId || '...'}</code></span>
         </div>
       </div>
     </div>
@@ -216,7 +214,7 @@ function CaptureContent() {
 export default function CapturePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm">
+      <div className="min-h-screen bg-[#f4f8fd] flex items-center justify-center text-slate-500 text-sm">
         Initializing Phone Lens...
       </div>
     }>

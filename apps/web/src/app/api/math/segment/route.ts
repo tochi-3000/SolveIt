@@ -103,15 +103,18 @@ export async function POST(req: NextRequest) {
 
 /**
  * Orchestrates Meta SAM 3.1 REST API call for mathematical region segmentation.
+ * Uses Meta's official /v1/responses endpoint with input_image and input_text parts.
  */
 async function callMetaSam31Api(
   apiKey: string,
   imageBase64: string,
   promptText?: string
 ): Promise<SAMSegment[]> {
-  const endpoint = process.env.META_SAM_ENDPOINT || 'https://api.meta.ai/v1/models/sam-3.1/segment';
+  const endpoint = process.env.META_SAM_ENDPOINT || 'https://api.meta.ai/v1/responses';
 
-  const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+  const cleanBase64 = imageBase64.startsWith('data:')
+    ? imageBase64
+    : `data:image/jpeg;base64,${imageBase64}`;
 
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -120,30 +123,40 @@ async function callMetaSam31Api(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      image: cleanBase64,
-      prompt: promptText || 'mathematical equations, algebraic formulas, numbered questions',
-      mode: 'multi_box',
-      confidence_threshold: 0.85,
+      model: 'sam-3.1',
+      input: [
+        {
+          role: 'user',
+          content: [
+            { type: 'input_image', image_url: cleanBase64 },
+            { type: 'input_text', text: promptText || 'mathematical equation' },
+          ],
+        },
+      ],
     }),
+    signal: AbortSignal.timeout(20000),
   });
 
   if (!response.ok) {
-    throw new Error(`Meta SAM 3.1 API returned status ${response.status}`);
+    const errText = await response.text();
+    throw new Error(`Meta SAM 3.1 API error (${response.status}): ${errText}`);
   }
 
   const data = await response.json();
-  if (Array.isArray(data.segments)) {
-    return data.segments.map((seg: any, idx: number) => ({
-      id: seg.id || `seg_${idx + 1}`,
-      label: seg.label || `Equation ${idx + 1}`,
+  const annotations = data.output?.[0]?.content?.[0]?.annotations;
+
+  if (Array.isArray(annotations) && annotations.length > 0) {
+    return annotations.map((ann: any, idx: number) => ({
+      id: ann.id || `seg_${idx + 1}`,
+      label: ann.label || `Equation ${idx + 1}`,
       boundingBox: {
-        yMin: seg.box?.[0] ?? 0.1 * (idx + 1),
-        xMin: seg.box?.[1] ?? 0.08,
-        yMax: seg.box?.[2] ?? 0.1 * (idx + 1) + 0.18,
-        xMax: seg.box?.[3] ?? 0.92,
+        yMin: ann.box_2d?.[0] ? ann.box_2d[0] / 1000 : 0.1 * (idx + 1),
+        xMin: ann.box_2d?.[1] ? ann.box_2d[1] / 1000 : 0.08,
+        yMax: ann.box_2d?.[2] ? ann.box_2d[2] / 1000 : 0.1 * (idx + 1) + 0.18,
+        xMax: ann.box_2d?.[3] ? ann.box_2d[3] / 1000 : 0.92,
       },
-      confidence: seg.confidence ?? 0.95,
-      latexPreview: seg.latex_transcription,
+      confidence: ann.confidence ?? 0.95,
+      latexPreview: ann.text,
     }));
   }
 

@@ -32,25 +32,33 @@ export class MetaMuseProvider implements IMathVisionProvider {
 
     const apiUrl = process.env.META_API_URL || 'https://api.meta.ai/v1/chat/completions';
 
-    // Format multimodal input
-    const formattedImage = imageBase64.startsWith('data:')
-      ? imageBase64
-      : `data:image/jpeg;base64,${imageBase64}`;
+    // Production Safeguard: Only attach image_url if a real base64 image or data URI was provided.
+    // Sending placeholder text like "mockBase64ImageData" causes Meta API to return HTTP 400 (corrupt image).
+    const hasValidImage =
+      Boolean(imageBase64) &&
+      imageBase64 !== 'mockBase64ImageData' &&
+      (imageBase64.startsWith('data:image/') || imageBase64.length > 128);
+
+    const userContentParts: any[] = [];
+    if (hasValidImage) {
+      const formattedImage = imageBase64.startsWith('data:')
+        ? imageBase64
+        : `data:image/jpeg;base64,${imageBase64}`;
+      userContentParts.push({
+        type: 'image_url',
+        image_url: { url: formattedImage },
+      });
+    }
+    userContentParts.push({
+      type: 'text',
+      text: buildUserPrompt(verifiedEquation, level, language),
+    });
 
     const messages: any[] = [
       { role: 'system', content: STATIC_SYSTEM_PROMPT },
       {
         role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: { url: formattedImage },
-          },
-          {
-            type: 'text',
-            text: buildUserPrompt(verifiedEquation, level, language),
-          },
-        ],
+        content: userContentParts,
       },
     ];
 
@@ -71,7 +79,7 @@ export class MetaMuseProvider implements IMathVisionProvider {
             temperature: 0.1,
             max_tokens: 3500,
           }),
-          signal: AbortSignal.timeout(12000),
+          signal: AbortSignal.timeout(30000), // Extended from 12s to 30s to allow deep chain-of-thought vision reasoning
         });
 
         if (!res.ok) {
@@ -130,7 +138,7 @@ export class MetaMuseProvider implements IMathVisionProvider {
               temperature: 0.2,
               max_tokens: 3500,
             }),
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(30000), // Extended from 15s to 30s for complex WAEC LaTeX synthesis
           });
 
           if (!finalRes.ok) {
@@ -241,56 +249,146 @@ export class MetaMuseProvider implements IMathVisionProvider {
     ];
 
     const isPidgin = language === 'pidgin';
-    const a = symbolicProof.milestones?.a || '3';
-    const b = symbolicProof.milestones?.b || '-5';
-    const c = symbolicProof.milestones?.c || '-2';
-    const disc = symbolicProof.discriminant ?? 49;
-    const factored = symbolicProof.factored_latex || '(3x + 1)(x - 2) = 0';
-    const finalRoots = symbolicProof.solution_latex || 'x = -\\frac{1}{3} \\quad \\text{or} \\quad x = 2';
+    const aNum = Number(symbolicProof.milestones?.a ?? 1);
+    const bNum = Number(symbolicProof.milestones?.b ?? -5);
+    const cNum = Number(symbolicProof.milestones?.c ?? 6);
+    const acNum = aNum * cNum;
 
-    const steps = [
-      {
-        stepNumber: 1,
-        explanation: isPidgin
-          ? `First step: Check the standard form ax² + bx + c = 0. Make sure everything balance with zero for the right hand side.`
-          : `Standard Form Identification: Identify coefficients a=${a}, b=${b}, c=${c} to establish the WAEC Method Mark [M1].`,
-        mathLatex: `${symbolicProof.latex_equation || rawTarget} \\quad (a=${a}, \\; b=${b}, \\; c=${c})`,
-        waecMark: 'M1' as const,
-        commonPitfall: `Forgetting negative sign on c (${c}), which flips discriminant signs.`,
-        audioNarration: isPidgin
-          ? `Check standard form. a na ${a}, b na ${b}, and c na ${c}.`
-          : `Identify standard form. a equals ${a}, b equals ${b}, and c equals ${c}.`,
-      },
-      {
-        stepNumber: 2,
-        explanation: isPidgin
-          ? `Calculate the discriminant: b² - 4ac. This go tell us whether the roots dey real or complex.`
-          : `Discriminant Evaluation: Compute Δ = b² - 4ac = (${b})² - 4(${a})(${c}) = ${disc} to prove real roots.`,
-        mathLatex: `\\Delta = b^2 - 4ac = (${b})^2 - 4(${a})(${c}) = ${disc}`,
-        waecMark: 'M1' as const,
-        commonPitfall: `Squaring negative b improperly: (-5)² is +25, not -25.`,
-        audioNarration: `Calculate discriminant. Delta equals ${disc}.`,
-      },
-      {
-        stepNumber: 3,
-        explanation: isPidgin
-          ? `Factorize the quadratic expression into two linear factors.`
-          : `Factorization / Grouping: Express the equation in factored form ${factored}.`,
-        mathLatex: `${factored}`,
-        waecMark: 'M1' as const,
-        commonPitfall: `Sign errors when grouping binomial factors.`,
-        audioNarration: `Factor the quadratic to obtain factors.`,
-      },
-      {
-        stepNumber: 4,
-        explanation: isPidgin
-          ? `Equate each bracket to zero to find the final two roots.`
-          : `Solve for Roots: Set each linear factor to zero to obtain the final WAEC Accuracy Mark [A1].`,
-        mathLatex: `${finalRoots}`,
-        waecMark: 'A1' as const,
-        audioNarration: `Final answer: ${finalRoots}.`,
-      },
-    ];
+    // Clean any raw \left or \right from SymPy's factored output for easy reading
+    const rawFactored = symbolicProof.factored_latex || '(x - 2)(x - 3) = 0';
+    const cleanFactored = rawFactored.replace(/\\left/g, '').replace(/\\right/g, '');
+    const finalRoots = symbolicProof.solution_latex || 'x = 2 \\quad \\text{or} \\quad x = 3';
+    const rootsList = symbolicProof.numerical_roots || [];
+
+    // Find the two factor numbers p and q that multiply to a*c and add to b
+    let factorP: number | null = null;
+    let factorQ: number | null = null;
+    if (!Number.isNaN(acNum) && !Number.isNaN(bNum)) {
+      const limit = Math.abs(acNum) + 1;
+      for (let i = -limit; i <= limit; i++) {
+        if (i !== 0 && acNum % i === 0) {
+          const j = acNum / i;
+          if (i + j === bNum) {
+            factorP = i;
+            factorQ = j;
+            break;
+          }
+        }
+      }
+    }
+
+    const fmtSigned = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+    const fmtParen = (n: number) => (n < 0 ? `(${n})` : `${n}`);
+
+    // Build clear, pedagogical level-specific steps (Phase 4 Adaptive Matrix)
+    let step1Explanation = '';
+    if (level === 'beginner') {
+      step1Explanation = isPidgin
+        ? `🟢 Foundation Step (Balogun Market Style): Imagine say you dey Balogun market to trade items. We need two numbers wey go multiply give ${acNum} and balance with ${bNum}. The two numbers na ${factorP} and ${factorQ}.`
+        : `🟢 Foundation Step (Market Trading Analogy): Imagine you are trading at the market with ₦${Math.abs(acNum)} balance. We find two friendly factor numbers that multiply to ${acNum} and add up to ${bNum}. The numbers are ${factorP} and ${factorQ}.`;
+    } else if (level === 'expert') {
+      step1Explanation = isPidgin
+        ? `🔴 Distinction Speed-Run [Target <= 3 mins]: Mentally spot the factor pair for ac = ${acNum} and b = ${bNum} (${factorP}, ${factorQ}) without writing unnecessary scratch work.`
+        : `🔴 Distinction Socratic Pace [Target <= 3 mins]: Mentally compute the factor pair for ac = ${acNum} and b = ${bNum}. The optimal factors are ${factorP} and ${factorQ}. Proceed to grouping to save examination minutes.`;
+    } else {
+      step1Explanation = isPidgin
+        ? `🟡 [M1 Method Mark] WAEC Standard: Multiply first and last numbers (${aNum} × ${cNum} = ${acNum}). Find two numbers wey multiply give ${acNum} and add give ${bNum}: ${factorP} and ${factorQ}.`
+        : `🟡 [M1 Method Mark] Standard WAEC Procedure: Identify a = ${aNum}, b = ${bNum}, c = ${cNum}. Product ac = ${acNum}. Find factor pair summing to b (${bNum}): ${factorP} and ${factorQ}.`;
+    }
+
+    const step1Math =
+      factorP !== null && factorQ !== null
+        ? `${fmtParen(factorP)} \\times ${fmtParen(factorQ)} = ${acNum} \\quad \\text{and} \\quad ${fmtParen(factorP)} + ${fmtParen(factorQ)} = ${bNum}`
+        : `${symbolicProof.latex_equation || rawTarget}`;
+
+    const step1Pitfall =
+      factorP !== null && factorQ !== null
+        ? `Watch the signs carefully: ${fmtParen(factorP)} + ${fmtParen(factorQ)} must equal ${bNum}, not ${-bNum}.`
+        : `Make sure all terms are on the left side (= 0) before picking a, b, and c.`;
+
+    // Build zero-product step (e.g., x - 2 = 0 => x = 2)
+    let step3Math = finalRoots;
+    if (rootsList.length === 2 && aNum === 1 && Number.isInteger(rootsList[0]) && Number.isInteger(rootsList[1])) {
+      const r1 = rootsList[0];
+      const r2 = rootsList[1];
+      const sign1 = r1 >= 0 ? `- ${r1}` : `+ ${Math.abs(r1)}`;
+      const sign2 = r2 >= 0 ? `- ${r2}` : `+ ${Math.abs(r2)}`;
+      step3Math = `x ${sign1} = 0 \\implies x = ${r1} \\qquad \\text{or} \\qquad x ${sign2} = 0 \\implies x = ${r2}`;
+    } else if (rootsList.length === 2) {
+      step3Math = `${cleanFactored.replace('= 0', '')} = 0 \\implies ${finalRoots}`;
+    }
+
+    const steps =
+      aNum !== 1 && factorP !== null && factorQ !== null
+        ? [
+            {
+              stepNumber: 1,
+              explanation: step1Explanation,
+              mathLatex: step1Math,
+              waecMark: 'M1' as const,
+              commonPitfall: step1Pitfall,
+              audioNarration: isPidgin
+                ? `Find two numbers wey multiply give ${acNum} and add give ${bNum}. Na ${factorP} and ${factorQ}.`
+                : `Find two numbers that multiply to ${acNum} and add up to ${bNum}. The numbers are ${factorP} and ${factorQ}.`,
+            },
+            {
+              stepNumber: 2,
+              explanation: isPidgin
+                ? `Split the middle term (${fmtSigned(bNum)}x) using ${fmtSigned(factorP)}x and ${fmtSigned(factorQ)}x, then factorize by grouping:`
+                : `Split the middle term (${fmtSigned(bNum)}x) into ${fmtSigned(factorP)}x and ${fmtSigned(factorQ)}x, then rewrite in factored form:`,
+              mathLatex: `${aNum}x^2 ${factorP >= 0 ? `+ ${factorP}x` : `- ${Math.abs(factorP)}x`} ${factorQ >= 0 ? `+ ${factorQ}x` : `- ${Math.abs(factorQ)}x`} ${cNum >= 0 ? `+ ${cNum}` : `- ${Math.abs(cNum)}`} = 0 \\implies ${cleanFactored}`,
+              waecMark: 'M1' as const,
+              commonPitfall: `Factor out the correct sign from the second pair so both brackets match.`,
+              audioNarration: `Split the middle term and factor by grouping.`,
+            },
+            {
+              stepNumber: 3,
+              explanation: isPidgin
+                ? `Set each bracket to zero to solve for x:`
+                : `Set each factor to zero and solve for x to earn the final Accuracy Mark [A1]:`,
+              mathLatex: step3Math,
+              waecMark: 'A1' as const,
+              commonPitfall: `Remember that when moving a number across the '=' sign, its sign flips.`,
+              audioNarration: `Set each factor to zero to get the final answer.`,
+            },
+          ]
+        : [
+            {
+              stepNumber: 1,
+              explanation: step1Explanation,
+              mathLatex: step1Math,
+              waecMark: 'M1' as const,
+              commonPitfall: step1Pitfall,
+              audioNarration: isPidgin
+                ? `Find two numbers wey multiply give ${cNum} and add give ${bNum}.`
+                : `Find two numbers that multiply to ${cNum} and add up to ${bNum}.`,
+            },
+            {
+              stepNumber: 2,
+              explanation: isPidgin
+                ? `Rewrite the equation in factored form using those two numbers:`
+                : `Rewrite the equation in factored form:`,
+              mathLatex: cleanFactored,
+              waecMark: 'M1' as const,
+              commonPitfall: `Double-check that expanding the brackets gives back the original equation.`,
+              audioNarration: `Rewrite the equation in factored form.`,
+            },
+            {
+              stepNumber: 3,
+              explanation: isPidgin
+                ? `Set each bracket to zero to find the values of x:`
+                : `Set each factor to zero to solve for x:`,
+              mathLatex: step3Math,
+              waecMark: 'A1' as const,
+              commonPitfall: `When solving x - a = 0, the sign flips to x = +a.`,
+              audioNarration: `Set each factor to zero to solve for x.`,
+            },
+          ];
+
+    const summaryText =
+      rootsList.length >= 2
+        ? `To solve ${rawTarget}, we can find its roots by factoring. Setting each factor to zero shows that the solutions are x = ${rootsList.join(' and x = ')}.`
+        : `Solved deterministically using SymPy algebraic verification.`;
 
     const solution = {
       topic: symbolicProof.topic_label || 'Quadratic Equations',
@@ -298,7 +396,7 @@ export class MetaMuseProvider implements IMathVisionProvider {
       languageMode: language,
       extractedLatex: symbolicProof.latex_equation || rawTarget,
       confidence: 0.985,
-      discriminantSummary: `Discriminant Δ = ${disc} (${symbolicProof.milestones?.nature_of_roots || 'Real and Distinct'}).`,
+      discriminantSummary: summaryText,
       steps,
       finalAnswerLatex: finalRoots,
       symbolicProof,

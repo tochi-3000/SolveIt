@@ -12,7 +12,6 @@ import {
   Globe2,
   RefreshCw,
   ArrowRight,
-  ShieldAlert,
 } from 'lucide-react';
 
 interface EquationVerificationModalProps {
@@ -43,7 +42,6 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
   const [editableEquation, setEditableEquation] = useState<string>('');
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
-  // Sync initial equation preview whenever segment changes
   useEffect(() => {
     if (segment) {
       setEditableEquation(segment.latexPreview || '3x^2 - 5x - 2 = 0');
@@ -59,13 +57,13 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0f172a]/50 backdrop-blur-sm animate-fadeIn">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] p-6 sm:p-8 shadow-app-shell space-y-6">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 transition"
+          className="absolute top-5 right-5 p-2 rounded-[8px] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#e2e8f0]/60 dark:hover:bg-[#1e293b] transition"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -73,21 +71,23 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
 
         {/* Modal Header */}
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
-            <Sparkles className="w-4 h-4" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
+            <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
             <span>Verification Gate • KaTeX Confirmation</span>
           </div>
-          <h2 className="text-2xl font-black text-white mt-1">Confirm Selected Problem</h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Ensure SolvAm correctly captured the equation from your exam page before solving.
+          <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+            Confirm Selected Problem
+          </h2>
+          <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
+            Verify that SolvAm accurately captured the equation from your exam page before triggering the solver.
           </p>
         </div>
 
         {/* Side-by-Side: Cropped Camera Image & Rendered KaTeX */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Cropped Camera Snippet */}
-          <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex flex-col items-center justify-center space-y-2">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+          <div className="p-4 bg-[#f8fafc] dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] flex flex-col items-center justify-center space-y-2">
+            <span className="text-[10px] text-[#64748b] dark:text-[#94a3b8] font-semibold uppercase tracking-wider">
               Camera Crop (Offscreen Canvas)
             </span>
             {croppedImageUri ? (
@@ -95,25 +95,25 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
               <img
                 src={croppedImageUri}
                 alt="Cropped Math Segment"
-                className="max-h-28 object-contain rounded-lg border border-slate-700 bg-white"
+                className="max-h-28 object-contain rounded-[8px] border border-[#e2e8f0] bg-white"
               />
             ) : (
-              <div className="h-24 flex items-center justify-center text-xs text-slate-500">
+              <div className="h-24 flex items-center justify-center text-xs text-[#64748b] dark:text-[#94a3b8]">
                 Cropping region...
               </div>
             )}
           </div>
 
           {/* KaTeX Rendered Mathematical Truth */}
-          <div className="p-3 bg-slate-950 rounded-2xl border border-emerald-500/30 flex flex-col items-center justify-center space-y-2">
-            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+          <div className="p-4 bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] flex flex-col items-center justify-center space-y-2">
+            <span className="text-[10px] text-[#1e3a8a] dark:text-[#93c5fd] font-semibold uppercase tracking-wider">
               KaTeX Rendered Formula
             </span>
-            <div className="p-2 min-h-16 flex items-center justify-center text-center">
+            <div className="p-3 min-h-16 flex items-center justify-center text-center">
               <MathDisplay
                 value={editableEquation}
                 displayMode
-                className="text-emerald-300 font-bold text-lg"
+                className="text-[#0f172a] dark:text-[#f8fafc] font-bold text-lg"
               />
             </div>
           </div>
@@ -121,48 +121,45 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
 
         {/* Quick Edit Input Field */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+          <div className="flex items-center justify-between text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
             <label htmlFor="editableMath">Formula String (Editable):</label>
             <button
               type="button"
               onClick={() => setIsEditing(!isEditing)}
-              className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+              className="text-xs text-[#2563eb] dark:text-[#60a5fa] hover:text-[#1d4ed8] font-semibold flex items-center gap-1"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>{isEditing ? 'Done Editing' : 'Edit Formula'}</span>
             </button>
           </div>
 
-          <div className="relative">
-            <input
-              id="editableMath"
-              type="text"
-              value={editableEquation}
-              onChange={(e) => setEditableEquation(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              placeholder="e.g. 3x^2 - 5x - 2 = 0"
-            />
-          </div>
+          <input
+            id="editableMath"
+            type="text"
+            value={editableEquation}
+            onChange={(e) => setEditableEquation(e.target.value)}
+            className="w-full bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-3 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:bg-white dark:focus:bg-[#0b1120] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+            placeholder="e.g. 3x^2 - 5x - 2 = 0"
+          />
         </div>
 
         {/* Learning Mode & Language Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
-          {/* Scaffolding Selector */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-[#e2e8f0] dark:border-[#1e293b]">
           <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[11px] font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase tracking-wider flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
               <span>Pedagogy Level:</span>
             </span>
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#f0f5fa] dark:bg-[#0b1120] rounded-[8px]">
               {(['beginner', 'intermediate', 'expert'] as PedagogicalLevel[]).map((lvl) => (
                 <button
                   key={lvl}
                   type="button"
                   onClick={() => onChangePedagogicalLevel(lvl)}
-                  className={`py-1.5 rounded-lg text-xs font-semibold capitalize transition ${
+                  className={`py-1.5 rounded-[8px] text-xs font-semibold capitalize transition ${
                     pedagogicalLevel === lvl
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                      ? 'bg-[#2563eb] text-white shadow-sm'
+                      : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
                   }`}
                 >
                   {lvl}
@@ -171,31 +168,30 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
             </div>
           </div>
 
-          {/* Language Mode Selector */}
           <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Globe2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Language:</span>
+            <span className="text-[11px] font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase tracking-wider flex items-center gap-1.5">
+              <Globe2 className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+              <span>Explanation Language:</span>
             </span>
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#f0f5fa] dark:bg-[#0b1120] rounded-[8px]">
               <button
                 type="button"
                 onClick={() => onChangeLanguageMode('standard')}
-                className={`py-1.5 rounded-lg text-xs font-semibold transition ${
+                className={`py-1.5 rounded-[8px] text-xs font-semibold transition ${
                   languageMode === 'standard'
-                    ? 'bg-amber-600 text-white shadow'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                    ? 'bg-[#2563eb] text-white shadow-sm'
+                    : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
                 }`}
               >
-                Standard
+                Standard English
               </button>
               <button
                 type="button"
                 onClick={() => onChangeLanguageMode('pidgin')}
-                className={`py-1.5 rounded-lg text-xs font-semibold transition ${
+                className={`py-1.5 rounded-[8px] text-xs font-semibold transition ${
                   languageMode === 'pidgin'
-                    ? 'bg-amber-600 text-white shadow'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                    ? 'bg-[#2563eb] text-white shadow-sm'
+                    : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
                 }`}
               >
                 Pidgin 🇳🇬
@@ -205,11 +201,11 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
         </div>
 
         {/* Confirmation Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-[#e2e8f0] dark:border-[#1e293b]">
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-sm font-semibold transition"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] hover:bg-[#f8fafc] dark:hover:bg-[#0b1120] text-xs font-semibold transition"
           >
             Cancel
           </button>
@@ -218,7 +214,7 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
             type="button"
             onClick={handleConfirm}
             disabled={isSolving || !editableEquation.trim()}
-            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 disabled:opacity-50"
+            className="w-full sm:w-auto px-5 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
           >
             {isSolving ? (
               <>
@@ -228,7 +224,7 @@ export const EquationVerificationModal: React.FC<EquationVerificationModalProps>
             ) : (
               <>
                 <Check className="w-4 h-4" />
-                <span>Confirm & Solve with SolvAm</span>
+                <span>Confirm &amp; Solve with SolvAm</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

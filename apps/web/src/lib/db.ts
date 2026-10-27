@@ -234,3 +234,46 @@ export async function deductUserCredits(userId: string, amount: number = 1): Pro
   if (res.rows.length === 0) return 0;
   return Number(res.rows[0].credits);
 }
+
+export async function upsertAuthenticatedUser(
+  userId: string,
+  name: string,
+  email: string
+): Promise<UserRecord> {
+  await initDb();
+  const db = getDb();
+
+  const existing = await db.execute({
+    sql: `SELECT id, credits FROM users WHERE id = ?`,
+    args: [userId],
+  });
+
+  if (existing.rows.length > 0) {
+    const currentCredits = Number(existing.rows[0].credits);
+    const upgradedCredits = Math.max(currentCredits, 100);
+    await db.execute({
+      sql: `UPDATE users SET name = ?, email = ?, is_guest = 0, credits = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      args: [name, email, upgradedCredits, userId],
+    });
+    return {
+      id: userId,
+      name,
+      email,
+      is_guest: false,
+      credits: upgradedCredits,
+    };
+  }
+
+  await db.execute({
+    sql: `INSERT INTO users (id, email, name, is_guest, credits) VALUES (?, ?, ?, 0, 100)`,
+    args: [userId, email, name],
+  });
+
+  return {
+    id: userId,
+    name,
+    email,
+    is_guest: false,
+    credits: 100,
+  };
+}

@@ -1,106 +1,165 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TelemetryEvent } from '@/lib/ai/types';
-import { 
-  Terminal, 
-  Cpu, 
-  Clock, 
-  Coins, 
-  CheckCircle2, 
-  ChevronDown, 
-  ChevronUp, 
-  Code2, 
+import {
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  Code2,
   Zap,
-  Activity
+  Activity,
 } from 'lucide-react';
 
 interface TelemetryHudProps {
   telemetry: TelemetryEvent | null;
+  engineStatus?: 'checking' | 'online' | 'offline';
+  engineLatency?: number | null;
+  defaultExpanded?: boolean;
 }
 
-export default function TelemetryHud({ telemetry }: TelemetryHudProps) {
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+export default function TelemetryHud({
+  telemetry,
+  engineStatus = 'online',
+  engineLatency = null,
+  defaultExpanded = false,
+}: TelemetryHudProps) {
+  const [isOpen, setIsOpen] = useState<boolean>(defaultExpanded);
 
-  if (!telemetry) return null;
+  useEffect(() => {
+    if (telemetry && defaultExpanded) {
+      setIsOpen(true);
+    }
+  }, [telemetry, defaultExpanded]);
+
+  const toolCalls = telemetry?.toolCalls ?? [];
 
   return (
-    <div className="bg-slate-950 border border-emerald-500/30 rounded-2xl p-4 shadow-2xl animate-fadeIn">
-      {/* Header / Toggle */}
-      <div 
-        onClick={() => setIsOpen(!isOpen)} 
-        className="flex items-center justify-between cursor-pointer select-none pb-2 border-b border-slate-800"
+    <div className="bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] px-5 py-3.5 transition-all">
+      {/* Compact Collapsible Telemetry Bar Header */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex flex-wrap items-center justify-between gap-3 text-left select-none"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-bold font-mono uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-            <Terminal className="w-3.5 h-3.5" />
-            <span>Judge Telemetry HUD: Neuro-Symbolic Traces</span>
-          </span>
-        </div>
-
         <div className="flex items-center gap-3">
-          <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-            {telemetry.latencyMs}ms Total
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-[11px] font-mono font-semibold tracking-tight">
+            <Terminal className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+            <span>JUDGE TELEMETRY HUD</span>
           </span>
-          {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+
+          <span className="text-xs font-mono text-[#64748b] dark:text-[#94a3b8] hidden sm:inline">
+            {telemetry
+              ? `${telemetry.model} • ${toolCalls.length} Native Tool Invocations`
+              : 'Neuro-Symbolic Trace Monitor • Idle'}
+          </span>
         </div>
-      </div>
 
+        <div className="flex items-center gap-2.5">
+          <span className="px-2.5 py-1 rounded-[8px] bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] text-[11px] font-mono text-[#0f172a] dark:text-[#f8fafc] flex items-center gap-1.5">
+            <Activity className="w-3 h-3 text-[#2563eb] dark:text-[#60a5fa]" />
+            <span>
+              SymPy AST: {engineStatus.toUpperCase()}
+              {engineLatency !== null ? ` (${engineLatency}ms)` : ''}
+            </span>
+          </span>
+
+          {telemetry && (
+            <span className="px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-[11px] font-mono font-semibold">
+              {telemetry.latencyMs}ms
+            </span>
+          )}
+
+          <div className="p-1 rounded-[8px] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] hover:bg-[#e2e8f0]/50 dark:hover:bg-[#1e293b] transition">
+            {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
+        </div>
+      </button>
+
+      {/* Expanded Telemetry Details & Native Tool Invocations */}
       {isOpen && (
-        <div className="mt-3 space-y-3 text-xs">
-          {/* Metadata Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Active Model</span>
-              <span className="font-mono text-white font-semibold truncate block mt-0.5">
-                {telemetry.model}
+        <div className="mt-4 pt-4 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-4 animate-fadeIn">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3 bg-white dark:bg-[#0f172a] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b]">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] block">
+                Active Model
+              </span>
+              <span className="font-mono text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mt-1 block truncate">
+                {telemetry?.model || 'meta-muse-spark-1.3 (Standby)'}
               </span>
             </div>
 
-            <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Operation</span>
-              <span className="font-mono text-emerald-300 font-semibold truncate block mt-0.5">
-                Vision + SymPy Tools
+            <div className="p-3 bg-white dark:bg-[#0f172a] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b]">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] block">
+                Execution Pipeline
+              </span>
+              <span className="font-mono text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd] mt-1 block truncate">
+                SAM 3.1 + SymPy AST Verification
               </span>
             </div>
 
-            <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 col-span-2 sm:col-span-1">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Token Economy</span>
-              <span className="font-mono text-amber-300 font-semibold block mt-0.5">
-                {telemetry.tokenUsage?.totalTokens || 1360} tokens (Prefix Cached)
+            <div className="p-3 bg-white dark:bg-[#0f172a] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b]">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] block">
+                Token &amp; Cache Economy
+              </span>
+              <span className="font-mono text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mt-1 block">
+                {telemetry?.tokenUsage?.totalTokens
+                  ? `${telemetry.tokenUsage.totalTokens} tokens (Prefix Cached)`
+                  : 'Prefix Cache Warmed'}
               </span>
             </div>
           </div>
 
-          {/* Tool Calls Log */}
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>Native Tool Invocations ({telemetry.toolCalls.length})</span>
+          {/* Native Tool Invocations Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+                <span>NATIVE TOOL INVOCATIONS ({toolCalls.length})</span>
+              </span>
+              {telemetry && (
+                <span className="text-[11px] font-mono text-[#64748b] dark:text-[#94a3b8]">
+                  Total Roundtrip: {telemetry.latencyMs}ms
+                </span>
+              )}
             </div>
 
-            <div className="space-y-2">
-              {telemetry.toolCalls.map((tc, idx) => (
-                <div key={idx} className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 font-mono text-[11px] space-y-1">
-                  <div className="flex items-center justify-between text-emerald-400">
-                    <span className="font-bold flex items-center gap-1">
-                      <Code2 className="w-3.5 h-3.5 text-emerald-400" />
-                      {tc.toolName}()
-                    </span>
-                    <span className="text-slate-400 text-[10px]">{tc.durationMs}ms</span>
-                  </div>
+            {toolCalls.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2">
+                {toolCalls.map((tc, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-white dark:bg-[#0f172a] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b] font-mono text-[11px] space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-[#1e3a8a] dark:text-[#93c5fd] flex items-center gap-1.5">
+                        <Code2 className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+                        {tc.toolName}()
+                      </span>
+                      <span className="px-2 py-0.5 rounded-[8px] bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] text-[#64748b] dark:text-[#94a3b8] text-[10px]">
+                        {tc.durationMs}ms
+                      </span>
+                    </div>
 
-                  <div className="text-slate-300 text-[10px] truncate">
-                    <span className="text-slate-500">Args:</span> {JSON.stringify(tc.arguments)}
-                  </div>
+                    <div className="text-[#64748b] dark:text-[#94a3b8] text-[11px] truncate">
+                      <span className="text-[#0f172a] dark:text-[#f8fafc] font-medium">Args:</span>{' '}
+                      {JSON.stringify(tc.arguments)}
+                    </div>
 
-                  <div className="text-emerald-300 text-[10px] truncate">
-                    <span className="text-slate-500">SymPy Output:</span> {JSON.stringify(tc.result)}
+                    <div className="text-[#1e3a8a] dark:text-[#93c5fd] text-[11px] truncate">
+                      <span className="text-[#0f172a] dark:text-[#f8fafc] font-medium">
+                        SymPy Output:
+                      </span>{' '}
+                      {JSON.stringify(tc.result)}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3 bg-white dark:bg-[#0f172a] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b] font-mono text-[11px] text-[#64748b] dark:text-[#94a3b8]">
+                No tool invocations recorded in this session yet. Select an equation from the exam sheet or run the Muse Spark pipeline to inspect live SymPy AST tool calls.
+              </div>
+            )}
           </div>
         </div>
       )}
