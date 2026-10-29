@@ -324,11 +324,68 @@ def generate_parametric_twin(equation: str, topic: str = "Quadratic Equations") 
     """Generates a twin practice problem with clean integer roots guaranteed.
     
     Production Safeguard: Prevents degenerate problems, division-by-zero, or messy decimal roots.
-    Supports Quadratic, Calculus Differentiation, and Arithmetic Progression topics.
+    Supports Geometric Progression, Arithmetic Progression, Calculus Differentiation, and Quadratic topics.
     """
     normalized = f"{equation} {topic}".lower()
 
-    # Calculus Differentiation Support
+    # 1. Geometric Progression Support
+    if any(k in normalized for k in ["geometric", "g.p.", "gp", "common ratio"]):
+        gp_samples = [
+            (3, 2, 6, "Find the 6th term of 3, 6, 12, 24, ..."),
+            (2, 3, 5, "Find the 5th term of 2, 6, 18, 54, ..."),
+            (5, 2, 7, "Find the 7th term of 5, 10, 20, 40, ..."),
+            (4, 3, 5, "Find the 5th term of 4, 12, 36, 108, ..."),
+            (1, 4, 5, "Find the 5th term of 1, 4, 16, 64, ..."),
+        ]
+        a, r, n, problem_text = random.choice(gp_samples)
+        ans_val = a * (r ** (n - 1))
+        latex_str = f"T_n = {a}({r})^{{n-1}} \\quad (\\text{{Find }} T_{{{n}}} \\text{{ for: }} {a}, {a*r}, {a*(r**2)}, \\dots)"
+        ans_latex = f"T_{{{n}}} = {ans_val}"
+        steps = [
+            f"Identify first term: a = {a}",
+            f"Calculate common ratio: r = \\frac{{{a*r}}}{{{a}}} = {r}",
+            "Apply general G.P. formula: T_n = a \\cdot r^{n-1}",
+            f"Substitute n = {n}: T_{{{n}}} = {a} \\cdot ({r})^{{{n-1}}} = {a} \\cdot {r**(n-1)} = {ans_val}"
+        ]
+        return {
+            "success": True,
+            "original_equation": equation,
+            "twin_equation": f"T_{n} = {a} * {r}**({n}-1) for {a}, {a*r}, {a*(r**2)}...",
+            "twin_equation_latex": latex_str,
+            "correct_answer_latex": ans_latex,
+            "solution_steps": steps,
+            "parameters": {"a": a, "r": r, "n": n, "type": "geometric_progression"}
+        }
+
+    # 2. Arithmetic Progression Support
+    if any(k in normalized for k in ["arithmetic", "a.p.", "ap", "common difference"]):
+        ap_samples = [
+            (4, 3, 10, "Find the 10th term of 4, 7, 10, 13, ..."),
+            (5, 4, 12, "Find the 12th term of 5, 9, 13, 17, ..."),
+            (3, 5, 15, "Find the 15th term of 3, 8, 13, 18, ..."),
+            (2, 6, 8, "Find the 8th term of 2, 8, 14, 20, ..."),
+        ]
+        a, d, n, problem_text = random.choice(ap_samples)
+        ans_val = a + (n - 1) * d
+        latex_str = f"T_n = {a} + (n - 1){d} \\quad (\\text{{Find }} T_{{{n}}} \\text{{ for: }} {a}, {a+d}, {a+2*d}, \\dots)"
+        ans_latex = f"T_{{{n}}} = {ans_val}"
+        steps = [
+            f"Identify first term: a = {a}",
+            f"Calculate common difference: d = {a+d} - {a} = {d}",
+            "Apply general A.P. formula: T_n = a + (n - 1)d",
+            f"Substitute n = {n}: T_{{{n}}} = {a} + ({n}-1)({d}) = {a} + {(n-1)*d} = {ans_val}"
+        ]
+        return {
+            "success": True,
+            "original_equation": equation,
+            "twin_equation": f"T_{n} = {a} + ({n}-1)*{d} for {a}, {a+d}, {a+2*d}...",
+            "twin_equation_latex": latex_str,
+            "correct_answer_latex": ans_latex,
+            "solution_steps": steps,
+            "parameters": {"a": a, "d": d, "n": n, "type": "arithmetic_progression"}
+        }
+
+    # 3. Calculus Differentiation Support
     if any(k in normalized for k in ["dy/dx", "d/dx", "differentiat", "calculus", "derivative"]):
         c_coeffs = [
             (2, -6, 4, -5),
@@ -357,6 +414,7 @@ def generate_parametric_twin(equation: str, topic: str = "Quadratic Equations") 
             "parameters": {"a": a, "b": b, "c": c, "d": d, "type": "calculus"}
         }
 
+    # 4. Quadratic Equations Default (Guaranteed Integer Roots)
     x = sp.Symbol('x')
 
     # Generate random integer roots r1, r2 between -8 and 8 (excluding 0)
