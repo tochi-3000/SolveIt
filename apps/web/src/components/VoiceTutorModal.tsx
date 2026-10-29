@@ -51,7 +51,32 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // Stop any playing speech or active recording when modal closes
+  // Production Safeguard: Stop active speech synthesis or recording when unmounting or closing
+  useEffect(() => {
+    return () => {
+      if (stopAudioRef.current) {
+        stopAudioRef.current();
+        stopAudioRef.current = null;
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {
+          // Ignore abort errors during cleanup
+        }
+        recognitionRef.current = null;
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {
+          // Ignore stop errors during cleanup
+        }
+      }
+    };
+  }, []);
+
+  // Reset local state when closing
   useEffect(() => {
     if (!isOpen) {
       if (stopAudioRef.current) {
@@ -62,16 +87,9 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
         try {
           recognitionRef.current.abort();
         } catch {
-          // Ignore abort errors on cleanup
+          // Ignore abort errors during cleanup
         }
         recognitionRef.current = null;
-      }
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try {
-          mediaRecorderRef.current.stop();
-        } catch {
-          // Ignore stop errors on cleanup
-        }
       }
       setIsRecording(false);
       setIsPlayingAudio(false);
@@ -126,7 +144,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
         setResponseAnswer(data.answer);
         setWaecTip(data.waecMarkRelevance);
 
-        // Auto-play the exact on-screen answer text with math normalization so voice & text match 100%
+        // Auto-play the exact on-screen answer text with math normalization
         if (data.answer) {
           const cancel = playSpokenMath(data.answer, {
             rate: speechRate,
@@ -152,7 +170,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
   const handleToggleRecord = async () => {
     setVoiceError(null);
 
-    // Stop any ongoing TTS playback before listening to user's voice
+    // Stop any ongoing TTS playback before listening to user voice
     if (stopAudioRef.current) {
       stopAudioRef.current();
       stopAudioRef.current = null;
@@ -166,7 +184,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
         try {
           recognitionRef.current.stop();
         } catch {
-          // Ignore
+          // Ignore stop errors
         }
         return;
       }
@@ -212,14 +230,14 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
           setIsRecording(false);
           if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
             setVoiceError(
-              'Microphone permission was denied. Please allow microphone access in your browser address bar or type your question.'
+              'Microphone permission was denied. Please allow microphone access in your browser or type your question.'
             );
           } else if (event.error === 'no-speech') {
             setVoiceError(
-              'No speech was detected. Click the microphone button and speak your question clearly, or type it below.'
+              'No speech was detected. Please speak clearly into your microphone, or type your question.'
             );
           } else if (event.error !== 'aborted') {
-            setVoiceError(`Voice capture error (${event.error}). You can also type your question directly.`);
+            setVoiceError(`Voice capture error (${event.error}). You can also type your question.`);
           }
         };
 
@@ -229,11 +247,6 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
           const finalSpoken = liveTranscriptRef.current.trim();
           if (finalSpoken) {
             handleSubmitQuestion(finalSpoken);
-          } else {
-            setVoiceError((prev) =>
-              prev ||
-              'No speech was detected from your microphone. Please speak clearly while recording or type your question below.'
-            );
           }
         };
 
@@ -296,230 +309,212 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-        {/* Close Button */}
+    <div className="mt-3 w-full rounded-[12px] bg-gradient-to-b from-[#f0f7ff] to-white dark:from-[#0b1120] dark:to-[#0f172a] border border-[#bfdbfe] dark:border-[#1e3a8a] shadow-sm p-3.5 sm:p-4.5 space-y-3 transition-all">
+      {/* Compact Header: Sparkles badge + Title + Close Button */}
+      <div className="flex items-center justify-between gap-2 border-b border-[#e2e8f0]/80 dark:border-[#1e293b] pb-2.5">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dbeafe] dark:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] text-[11px] font-bold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+            Meta Muse Voice Transcribe
+          </span>
+          <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
+            Step {stepNumber} Inquiries
+          </span>
+        </div>
+
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 transition"
-          aria-label="Close"
+          className="p-1 rounded-[6px] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white hover:bg-[#e2e8f0] dark:hover:bg-[#1e293b] transition"
+          aria-label="Close voice menu"
+          title="Close voice menu"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
+      </div>
 
-        {/* Modal Header */}
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
-            <Sparkles className="w-4 h-4" />
-            <span>Meta Muse Voice Transcribe • Bidirectional Voice Tutor</span>
-          </div>
-          <h2 className="text-2xl font-black text-white mt-1">Ask Professor SolvAm</h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Ask any question aloud regarding <strong>Step {stepNumber}</strong>. SolvAm analyzes your voice and answers with official WAEC rubric insights.
-          </p>
-        </div>
-
-        {/* Target Step Summary Card */}
-        <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-xs space-y-2.5">
-          <div className="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
-            Active Focus Step:
-          </div>
-          <MathDisplay
-            value={stepExplanation}
-            className="text-slate-100 font-medium leading-relaxed text-xs sm:text-sm"
+      {/* Voice & Text Input Row */}
+      <div className="space-y-2">
+        <div className="flex gap-2 items-center">
+          <input
+            type="text"
+            value={questionInput}
+            onChange={(e) => {
+              setQuestionInput(e.target.value);
+              if (voiceError) setVoiceError(null);
+            }}
+            placeholder={
+              isRecording
+                ? 'Listening to microphone... Speak clearly'
+                : `Ask anything about Step ${stepNumber} (or click mic to speak)...`
+            }
+            className="flex-1 bg-white dark:bg-[#0b1120] border border-[#cbd5e1] dark:border-[#334155] rounded-[8px] px-3.5 py-2 text-xs sm:text-sm text-[#0f172a] dark:text-[#f8fafc] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb] transition"
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmitQuestion()}
           />
-          <div className="pt-2 px-3 py-2 bg-slate-900/90 rounded-xl border border-slate-800/80 text-center">
-            <MathDisplay
-              value={stepLatex}
-              displayMode
-              className="text-emerald-300 text-sm font-semibold"
-            />
-          </div>
-        </div>
 
-        {/* Voice Input Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
-            <span>Speak or Type Your Question:</span>
-            {isRecording && (
-              <span className="flex items-center gap-1.5 text-rose-400 font-bold animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-                Listening... Speak now (click mic to finish)
-              </span>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={questionInput}
-              onChange={(e) => {
-                setQuestionInput(e.target.value);
-                if (voiceError) setVoiceError(null);
-              }}
-              placeholder={
-                isRecording
-                  ? 'Listening to your microphone...'
-                  : `Ask anything about Step ${stepNumber} (e.g. How did we get these numbers?)`
-              }
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmitQuestion()}
-            />
-
-            {/* Submit Typed Question Button */}
-            <button
-              type="button"
-              onClick={() => handleSubmitQuestion()}
-              disabled={isLoading || !questionInput.trim()}
-              className="px-3.5 py-3 rounded-xl font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:pointer-events-none text-white transition flex items-center justify-center"
-              title="Submit Question"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-
-            {/* Live Microphone Voice Capture Button */}
-            <button
-              type="button"
-              onClick={handleToggleRecord}
-              disabled={isLoading}
-              className={`p-3 rounded-xl font-bold transition flex items-center justify-center ${
-                isRecording
-                  ? 'bg-rose-600 hover:bg-rose-500 text-white animate-pulse ring-4 ring-rose-500/30'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95'
-              }`}
-              title={isRecording ? 'Stop Recording & Submit' : 'Click to Speak Your Question'}
-            >
-              {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
-          </div>
-
-          {/* Voice Error / Silence Alert */}
-          {voiceError && (
-            <div className="p-2.5 bg-amber-950/50 border border-amber-700/50 rounded-xl flex items-start gap-2 text-xs text-amber-200 animate-fadeIn">
-              <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-              <span>{voiceError}</span>
-            </div>
-          )}
-
-          {/* Contextual Quick Clickable Suggestions */}
-          <div className="flex flex-wrap gap-1.5 pt-1 text-xs">
-            <span className="text-slate-400 self-center text-[11px]">Quick Questions:</span>
-            <button
-              type="button"
-              onClick={() => {
-                const q = `Can you explain Step ${stepNumber} in simpler words?`;
-                setQuestionInput(q);
-                handleSubmitQuestion(q);
-              }}
-              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition text-[11px]"
-            >
-              Explain Step {stepNumber} Simply?
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const q = `Why did we choose these numbers in Step ${stepNumber}?`;
-                setQuestionInput(q);
-                handleSubmitQuestion(q);
-              }}
-              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition text-[11px]"
-            >
-              Why These Numbers?
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const q = `What do WAEC examiners check on Step ${stepNumber}?`;
-                setQuestionInput(q);
-                handleSubmitQuestion(q);
-              }}
-              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition text-[11px]"
-            >
-              WAEC Marking Tip?
-            </button>
-          </div>
-        </div>
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center gap-3">
-            <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin" />
-            <span className="text-xs text-slate-300 font-semibold">
-              Professor SolvAm is analyzing your question for Step {stepNumber}...
-            </span>
-          </div>
-        )}
-
-        {/* Professor SolvAm Response */}
-        {responseAnswer && !isLoading && (
-          <div className="p-4 bg-slate-950 rounded-2xl border border-emerald-500/40 space-y-3 animate-fadeIn">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Professor SolvAm Clarification:</span>
-              </span>
-
-              {/* Audio Controls */}
-              {isPlayingAudio ? (
-                <button
-                  type="button"
-                  onClick={handleStopAudio}
-                  className="px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold rounded-lg transition flex items-center gap-1"
-                >
-                  <Square className="w-3 h-3" />
-                  <span>Stop Audio</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const cancel = playSpokenMath(responseAnswer, {
-                      rate: speechRate,
-                      language: languageMode,
-                      onStart: () => setIsPlayingAudio(true),
-                      onEnd: () => setIsPlayingAudio(false),
-                    });
-                    stopAudioRef.current = cancel;
-                  }}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold rounded-lg transition flex items-center gap-1"
-                >
-                  <Volume2 className="w-3 h-3 text-emerald-400" />
-                  <span>Replay Audio</span>
-                </button>
-              )}
-            </div>
-
-            {askedQuestion && (
-              <div className="text-xs text-slate-400 italic border-l-2 border-slate-700 pl-2.5">
-                &ldquo;{askedQuestion}&rdquo;
-              </div>
-            )}
-
-            <MathDisplay
-              value={responseAnswer}
-              className="text-sm text-slate-100 leading-relaxed font-medium"
-            />
-
-            {waecTip && (
-              <div className="p-2.5 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-xs text-emerald-300 font-medium">
-                <MathDisplay value={waecTip} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Bottom Actions */}
-        <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
+          {/* Submit Question Button */}
           <button
             type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition"
+            onClick={() => handleSubmitQuestion()}
+            disabled={isLoading || !questionInput.trim()}
+            className="px-3.5 py-2 rounded-[8px] font-semibold bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 disabled:pointer-events-none text-white text-xs transition flex items-center justify-center gap-1.5 flex-shrink-0"
+            title="Submit Question"
           >
-            Done
+            <Send className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Ask</span>
+          </button>
+
+          {/* Voice Capture Microphone Toggle */}
+          <button
+            type="button"
+            onClick={handleToggleRecord}
+            disabled={isLoading}
+            className={`p-2 sm:px-3 sm:py-2 rounded-[8px] font-semibold transition flex items-center justify-center gap-1.5 flex-shrink-0 ${
+              isRecording
+                ? 'bg-rose-600 hover:bg-rose-500 text-white animate-pulse ring-2 ring-rose-500/40'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95'
+            }`}
+            title={isRecording ? 'Stop Recording & Submit' : 'Click to Speak Aloud'}
+          >
+            {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            <span className="hidden sm:inline text-xs">
+              {isRecording ? 'Listening...' : 'Speak'}
+            </span>
+          </button>
+        </div>
+
+        {/* Live Recording Pulse Banner */}
+        {isRecording && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-[8px] text-xs font-semibold text-rose-700 dark:text-rose-300 animate-pulse">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+            <span>Listening... SolvAm is transcribing your spoken question in real-time. Click mic to send.</span>
+          </div>
+        )}
+
+        {/* Error Notification */}
+        {voiceError && (
+          <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-[8px] flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <span>{voiceError}</span>
+          </div>
+        )}
+
+        {/* Contextual Quick Question Suggestions */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs">
+          <span className="text-[#64748b] dark:text-[#94a3b8] text-[11px] font-medium mr-1">
+            Quick Inquiries:
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const q = `Explain Step ${stepNumber} in simpler words.`;
+              setQuestionInput(q);
+              handleSubmitQuestion(q);
+            }}
+            className="px-2.5 py-1 bg-white dark:bg-[#0b1120] hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-[#e2e8f0] dark:border-[#1e293b] text-[#1e3a8a] dark:text-[#93c5fd] rounded-[6px] transition text-[11px] font-medium"
+          >
+            Explain Step {stepNumber} Simply
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const q = `Why did we select these numbers in Step ${stepNumber}?`;
+              setQuestionInput(q);
+              handleSubmitQuestion(q);
+            }}
+            className="px-2.5 py-1 bg-white dark:bg-[#0b1120] hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-[#e2e8f0] dark:border-[#1e293b] text-[#1e3a8a] dark:text-[#93c5fd] rounded-[6px] transition text-[11px] font-medium"
+          >
+            Why These Numbers?
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const q = `What do WAEC examiners check for on Step ${stepNumber}?`;
+              setQuestionInput(q);
+              handleSubmitQuestion(q);
+            }}
+            className="px-2.5 py-1 bg-white dark:bg-[#0b1120] hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-[#e2e8f0] dark:border-[#1e293b] text-[#1e3a8a] dark:text-[#93c5fd] rounded-[6px] transition text-[11px] font-medium"
+          >
+            WAEC Marking Tip
           </button>
         </div>
       </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="p-3 bg-white dark:bg-[#0b1120] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b] flex items-center justify-center gap-2.5 text-xs text-[#2563eb] dark:text-[#60a5fa] font-semibold">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          <span>Professor SolvAm is analyzing your question for Step {stepNumber}...</span>
+        </div>
+      )}
+
+      {/* Professor SolvAm Response */}
+      {responseAnswer && !isLoading && (
+        <div className="p-3.5 bg-white dark:bg-[#0b1120] rounded-[10px] border border-[#bfdbfe] dark:border-[#1e3a8a] space-y-2.5">
+          <div className="flex items-center justify-between border-b border-[#e2e8f0]/80 dark:border-[#1e293b] pb-2">
+            <span className="text-xs font-bold text-[#1e3a8a] dark:text-[#93c5fd] uppercase tracking-wider flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Professor SolvAm Clarification:</span>
+            </span>
+
+            {/* Audio Controls */}
+            {isPlayingAudio ? (
+              <button
+                type="button"
+                onClick={handleStopAudio}
+                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold rounded-[6px] transition flex items-center gap-1 shadow-sm"
+              >
+                <Square className="w-3 h-3" />
+                <span>Stop Audio</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  const cancel = playSpokenMath(responseAnswer, {
+                    rate: speechRate,
+                    language: languageMode,
+                    onStart: () => setIsPlayingAudio(true),
+                    onEnd: () => setIsPlayingAudio(false),
+                  });
+                  stopAudioRef.current = cancel;
+                }}
+                className="px-2.5 py-1 bg-[#dbeafe] dark:bg-[#1e3a8a]/50 hover:bg-[#bfdbfe] text-[#1e3a8a] dark:text-[#93c5fd] text-[10px] font-semibold rounded-[6px] transition flex items-center gap-1"
+              >
+                <Volume2 className="w-3 h-3 text-[#2563eb] dark:text-[#60a5fa]" />
+                <span>Replay Audio</span>
+              </button>
+            )}
+          </div>
+
+          {askedQuestion && (
+            <div className="text-xs text-[#64748b] dark:text-[#94a3b8] italic border-l-2 border-[#2563eb] pl-2.5">
+              &ldquo;{askedQuestion}&rdquo;
+            </div>
+          )}
+
+          <MathDisplay
+            value={responseAnswer}
+            className="text-xs sm:text-sm text-[#0f172a] dark:text-[#f8fafc] leading-[1.6] font-medium"
+          />
+
+          {waecTip && (
+            <div className="p-2.5 bg-[#dbeafe]/50 dark:bg-[#1e3a8a]/30 border border-[#bfdbfe]/60 dark:border-[#1e3a8a]/60 rounded-[8px] text-xs text-[#1e3a8a] dark:text-[#93c5fd] font-medium">
+              <MathDisplay value={waecTip} />
+            </div>
+          )}
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1 bg-[#f1f5f9] dark:bg-[#1e293b] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] text-[#0f172a] dark:text-[#f8fafc] text-[11px] font-bold rounded-[6px] transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

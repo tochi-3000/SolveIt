@@ -4,10 +4,10 @@ import { cleanAndExtractJson } from '@/lib/ai/resilience';
 
 /**
  * Stage 1: Meta Muse / LLM Dynamic Twin Problem Synthesizer.
- * Provides 100% curriculum coverage across all WAEC topics (Geometric Progression,
- * Circle Geometry, Trigonometry, Matrices, Surds, etc.) with strict JSON contracts.
+ * Provides 100% curriculum coverage across all WAEC topics (Commercial Mathematics,
+ * Simple Interest, Geometric Progression, Trigonometry, Matrices, Surds, etc.) with strict JSON contracts.
  * Production Safeguard: Temperature 0.25 for mathematical consistency, topic invariants,
- * and 6-second timeout guard.
+ * and 15-second timeout guard.
  */
 async function generateTwinWithLlm(equation: string, topic: string) {
   const apiKey = process.env.META_API_KEY;
@@ -19,8 +19,9 @@ async function generateTwinWithLlm(equation: string, topic: string) {
 Your goal is to generate a mathematically similar "twin" practice problem based on the student's current problem.
 
 CRITICAL ARCHITECTURAL INVARIANTS:
-1. TOPIC & METHOD FIDELITY: The twin problem MUST test the EXACT SAME mathematical topic, syllabus concept, and formula as the original. If the topic is Geometric Progression, the twin MUST be Geometric Progression! If Quadratic, it MUST be Quadratic! NEVER change the topic!
+1. TOPIC & METHOD FIDELITY: The twin problem MUST test the EXACT SAME mathematical topic, syllabus concept, and formula as the original. If the topic is Commercial Mathematics or Simple Interest, the twin MUST be Commercial Mathematics / Simple Interest! If Geometric Progression, it MUST be Geometric Progression! If Quadratic, it MUST be Quadratic! NEVER change the topic!
 2. EXAM-FRIENDLY INTEGER NUMBERS: High school candidates calculate by hand. Ensure the numbers yield clean integers or simple terminating fractions:
+   - For Commercial Mathematics / Simple Interest: Use realistic round amounts ($2,000 - $8,000), whole percentages (5%, 6%, 8%), and clean year intervals (2 - 5 years).
    - For Geometric Progression (G.P.): Choose first term a in [2, 6], common ratio r in [2, 3, 1/2], and term index n in [5, 7] so answers do not exceed 100,000.
    - For Arithmetic Progression (A.P.): Choose first term a in [2, 10], common difference d in [-5, 5], term index n in [8, 15].
    - For Quadratic / Factoring: Choose integer roots in [-6, 6] and leading coefficient a in [1, 2, 3].
@@ -28,7 +29,7 @@ CRITICAL ARCHITECTURAL INVARIANTS:
 3. OUTPUT FORMAT: Return ONLY a valid JSON object matching this exact schema:
 {
   "success": true,
-  "original_equation": "${equation}",
+  "original_equation": "echo back input problem",
   "twin_equation": "clean text/formula string",
   "twin_equation_latex": "LaTeX representation of problem or equation",
   "correct_answer_latex": "clean LaTeX answer",
@@ -49,7 +50,7 @@ CRITICAL ARCHITECTURAL INVARIANTS:
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'meta-muse-spark-1.3',
+        model: 'muse-spark-1.3', // Correct Meta API model identifier
         messages: [
           { role: 'system', content: systemPrompt },
           {
@@ -61,7 +62,7 @@ CRITICAL ARCHITECTURAL INVARIANTS:
         max_tokens: 1024,
         response_format: { type: 'json_object' },
       }),
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) {
@@ -77,11 +78,24 @@ CRITICAL ARCHITECTURAL INVARIANTS:
     if (!parsed || !parsed.twin_equation_latex) return null;
 
     // Topic Invariant Safeguard:
-    // If requested Geometric Progression, reject if output looks like a standard quadratic polynomial
+    // If requested topic is non-quadratic, reject if output looks like a standard quadratic polynomial
     const normTopic = topic.toLowerCase();
-    const isGp = normTopic.includes('geometric') || normTopic.includes('g.p.') || normTopic.includes('gp');
-    if (isGp && parsed.twin_equation_latex.includes('x^2') && !parsed.twin_equation_latex.toLowerCase().includes('t_')) {
-      console.warn('[Twin LLM] Generated topic mismatch (quadratic instead of GP), rejecting.');
+    const isNonQuadratic =
+      normTopic.includes('commercial') ||
+      normTopic.includes('interest') ||
+      normTopic.includes('percentage') ||
+      normTopic.includes('geometric') ||
+      normTopic.includes('g.p.') ||
+      normTopic.includes('arithmetic') ||
+      normTopic.includes('calculus');
+
+    if (
+      isNonQuadratic &&
+      parsed.twin_equation_latex.includes('x^2') &&
+      parsed.twin_equation_latex.includes('= 0') &&
+      !parsed.twin_equation_latex.toLowerCase().includes('t_')
+    ) {
+      console.warn('[Twin LLM] Generated topic mismatch (quadratic instead of target topic), rejecting.');
       return null;
     }
 
@@ -100,7 +114,68 @@ CRITICAL ARCHITECTURAL INVARIANTS:
 function generateFallbackTwin(equation: string, topic: string = 'Quadratic Equations') {
   const normalized = (equation + ' ' + topic).toLowerCase();
 
-  // 1. Geometric Progression Detection
+  // 1. Commercial Mathematics & Simple Interest Detection
+  if (
+    normalized.includes('interest') ||
+    normalized.includes('cost price') ||
+    normalized.includes('selling price') ||
+    normalized.includes('invest') ||
+    normalized.includes('percentage') ||
+    normalized.includes('commercial') ||
+    normalized.includes('bought') ||
+    normalized.includes('car') ||
+    normalized.includes('per annum')
+  ) {
+    const cmVariants = [
+      {
+        eq: 'Kofi bought a motorcycle for $4,000.00 and sold it at 85% of cost. He spent $900.00 and invested the rest at 5% p.a. simple interest for 4 years. Calculate the interest.',
+        latex: '\\text{S.P.} = 4000 \\times 0.85 = 3400, \\quad P = 3400 - 900 = 2500, \\quad I = \\frac{2500 \\times 5 \\times 4}{100}',
+        ans: 'I = \\$500.00',
+        steps: [
+          'Calculate Selling Price: S.P. = \\frac{85}{100} \\times 4000 = \\$3,400.00',
+          'Calculate Principal Invested: P = 3400 - 900 = \\$2,500.00',
+          'Apply Simple Interest formula: I = \\frac{P \\times R \\times T}{100} = \\frac{2500 \\times 5 \\times 4}{100}',
+          'Evaluate final interest: I = \\$500.00',
+        ],
+      },
+      {
+        eq: 'A trader bought goods for $6,000.00 and sold at 80% of cost. She spent $1,200.00 and invested the balance at 7% p.a. simple interest for 2 years. Calculate the interest.',
+        latex: '\\text{S.P.} = 6000 \\times 0.80 = 4800, \\quad P = 4800 - 1200 = 3600, \\quad I = \\frac{3600 \\times 7 \\times 2}{100}',
+        ans: 'I = \\$504.00',
+        steps: [
+          'Calculate Selling Price: S.P. = \\frac{80}{100} \\times 6000 = \\$4,800.00',
+          'Calculate Principal Invested: P = 4800 - 1200 = \\$3,600.00',
+          'Apply Simple Interest formula: I = \\frac{P \\times R \\times T}{100} = \\frac{3600 \\times 7 \\times 2}{100}',
+          'Evaluate final interest: I = \\$504.00',
+        ],
+      },
+      {
+        eq: 'Chidi bought equipment for $8,000.00 and sold at 75% of cost. He spent $2,000.00 and deposited the rest at 4% p.a. simple interest for 5 years. Calculate the interest.',
+        latex: '\\text{S.P.} = 8000 \\times 0.75 = 6000, \\quad P = 6000 - 2000 = 4000, \\quad I = \\frac{4000 \\times 4 \\times 5}{100}',
+        ans: 'I = \\$800.00',
+        steps: [
+          'Calculate Selling Price: S.P. = \\frac{75}{100} \\times 8000 = \\$6,000.00',
+          'Calculate Principal Invested: P = 6000 - 2000 = \\$4,000.00',
+          'Apply Simple Interest formula: I = \\frac{P \\times R \\times T}{100} = \\frac{4000 \\times 4 \\times 5}{100}',
+          'Evaluate final interest: I = \\$800.00',
+        ],
+      },
+    ];
+
+    const pick = cmVariants[Math.floor(Math.random() * cmVariants.length)];
+    return {
+      success: true,
+      original_equation: equation,
+      twin_equation: pick.eq,
+      twin_equation_latex: pick.latex,
+      correct_answer_latex: pick.ans,
+      solution_steps: pick.steps,
+      topic: 'Commercial Mathematics',
+      parameters: { type: 'commercial_mathematics' },
+    };
+  }
+
+  // 2. Geometric Progression Detection
   if (
     normalized.includes('geometric') ||
     normalized.includes('g.p.') ||
@@ -167,7 +242,7 @@ function generateFallbackTwin(equation: string, topic: string = 'Quadratic Equat
     };
   }
 
-  // 2. Calculus / Differentiation Detection
+  // 3. Calculus / Differentiation Detection
   if (
     normalized.includes('dy/dx') ||
     normalized.includes('d/dx') ||
@@ -227,7 +302,7 @@ function generateFallbackTwin(equation: string, topic: string = 'Quadratic Equat
     };
   }
 
-  // 3. Arithmetic Progression Detection
+  // 4. Arithmetic Progression Detection
   if (
     normalized.includes('progression') ||
     normalized.includes('arithmetic') ||
@@ -270,7 +345,7 @@ function generateFallbackTwin(equation: string, topic: string = 'Quadratic Equat
     };
   }
 
-  // 4. Quadratic / Factoring Default: guaranteed clean integer roots
+  // 5. Quadratic / Factoring Default: guaranteed clean integer roots
   const rootsPool = [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5];
   const r1 = rootsPool[Math.floor(Math.random() * rootsPool.length)];
   let r2 = rootsPool[Math.floor(Math.random() * rootsPool.length)];
@@ -281,7 +356,6 @@ function generateFallbackTwin(equation: string, topic: string = 'Quadratic Equat
   const aVals = [1, 2, 3];
   const a = aVals[Math.floor(Math.random() * aVals.length)];
 
-  // a(x - r1)(x - r2) = a(x^2 - (r1+r2)x + r1*r2) = ax^2 + bx + c
   const b = -a * (r1 + r2);
   const c = a * r1 * r2;
 
@@ -341,9 +415,21 @@ export async function POST(req: NextRequest) {
       if (result && result.twin_equation_latex) {
         // Topic sanity check on Python output:
         const normTopic = topic.toLowerCase();
-        const isGp = normTopic.includes('geometric') || normTopic.includes('g.p.') || normTopic.includes('gp');
-        if (isGp && result.twin_equation_latex.includes('x^2') && !result.twin_equation_latex.toLowerCase().includes('t_')) {
-          console.warn('[Twin Router] Python CAS returned quadratic for GP, falling back to topic generator.');
+        const isNonQuadratic =
+          normTopic.includes('commercial') ||
+          normTopic.includes('interest') ||
+          normTopic.includes('percentage') ||
+          normTopic.includes('geometric') ||
+          normTopic.includes('g.p.') ||
+          normTopic.includes('arithmetic') ||
+          normTopic.includes('calculus');
+
+        if (
+          isNonQuadratic &&
+          result.twin_equation_latex.includes('x^2') &&
+          result.twin_equation_latex.includes('= 0')
+        ) {
+          console.warn('[Twin Router] Python CAS returned quadratic for non-quadratic topic, falling back to topic generator.');
         } else {
           return NextResponse.json(result);
         }

@@ -370,9 +370,19 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                   {/* Ask Question on this Step */}
                   <button
                     type="button"
-                    onClick={() => setVoiceStepTarget(st)}
-                    className="p-2 rounded-[8px] bg-white dark:bg-[#0b1120] hover:bg-[#dbeafe] dark:hover:bg-[#1e3a8a]/50 text-[#2563eb] dark:text-[#60a5fa] border border-[#e2e8f0] dark:border-[#1e293b] transition"
-                    title="Ask Professor SolvAm aloud about this step"
+                    onClick={() =>
+                      setVoiceStepTarget((prev) => (prev?.stepNumber === st.stepNumber ? null : st))
+                    }
+                    className={`p-2 rounded-[8px] transition ${
+                      voiceStepTarget?.stepNumber === st.stepNumber
+                        ? 'bg-[#2563eb] text-white shadow-sm ring-2 ring-[#2563eb]/30'
+                        : 'bg-white dark:bg-[#0b1120] hover:bg-[#dbeafe] dark:hover:bg-[#1e3a8a]/50 text-[#2563eb] dark:text-[#60a5fa] border border-[#e2e8f0] dark:border-[#1e293b]'
+                    }`}
+                    title={
+                      voiceStepTarget?.stepNumber === st.stepNumber
+                        ? 'Close Meta Muse Voice Transcribe menu'
+                        : 'Ask Professor SolvAm aloud about this step'
+                    }
                   >
                     <Mic className="w-4 h-4" />
                   </button>
@@ -427,6 +437,19 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                     <MathDisplay value={st.commonPitfall} inline />
                   </span>
                 </div>
+              )}
+
+              {/* Meta Muse Voice Transcribe Compact Menu (Inline under Active Step) */}
+              {voiceStepTarget?.stepNumber === st.stepNumber && (
+                <VoiceTutorModal
+                  isOpen={true}
+                  onClose={() => setVoiceStepTarget(null)}
+                  stepNumber={st.stepNumber}
+                  stepLatex={st.mathLatex}
+                  stepExplanation={st.explanation}
+                  languageMode={languageMode}
+                  speechRate={speechRate}
+                />
               )}
             </div>
           );
@@ -677,18 +700,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
         onClose={() => setIsDiagramModalOpen(false)}
       />
 
-      {/* Voice Tutor Modal (Meta Muse Voice Transcribe) */}
-      {voiceStepTarget && (
-        <VoiceTutorModal
-          isOpen={Boolean(voiceStepTarget)}
-          onClose={() => setVoiceStepTarget(null)}
-          stepNumber={voiceStepTarget.stepNumber}
-          stepLatex={voiceStepTarget.mathLatex}
-          stepExplanation={voiceStepTarget.explanation}
-          languageMode={languageMode}
-          speechRate={speechRate}
-        />
-      )}
+
     </section>
   );
 };

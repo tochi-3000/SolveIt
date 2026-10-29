@@ -414,7 +414,55 @@ def generate_parametric_twin(equation: str, topic: str = "Quadratic Equations") 
             "parameters": {"a": a, "b": b, "c": c, "d": d, "type": "calculus"}
         }
 
-    # 4. Quadratic Equations Default (Guaranteed Integer Roots)
+    # 4. Commercial Mathematics & Simple Interest Support
+    if any(k in normalized for k in ["interest", "cost price", "selling price", "invest", "percentage", "commercial", "car", "bought", "per annum"]):
+        cm_samples = [
+            (
+                "Kofi bought a motorcycle for $4,000.00 and sold it at 85% of cost. He spent $900.00 and invested the rest at 5% p.a. simple interest for 4 years. Calculate the interest.",
+                "\\text{S.P.} = 4000 \\times 0.85 = 3400, \\quad P = 3400 - 900 = 2500, \\quad I = \\frac{2500 \\times 5 \\times 4}{100}",
+                "I = \\$500.00",
+                [
+                    "Calculate Selling Price: S.P. = \\frac{85}{100} \\times 4000 = \\$3,400.00",
+                    "Calculate Principal Invested: P = 3400 - 900 = \\$2,500.00",
+                    "Apply Simple Interest formula: I = \\frac{P \\times R \\times T}{100} = \\frac{2500 \\times 5 \\times 4}{100}",
+                    "Evaluate final interest: I = \\$500.00"
+                ]
+            ),
+            (
+                "A trader bought goods for $6,000.00 and sold at 80% of cost. She spent $1,200.00 and invested the balance at 7% p.a. simple interest for 2 years. Calculate the interest.",
+                "\\text{S.P.} = 6000 \\times 0.80 = 4800, \\quad P = 4800 - 1200 = 3600, \\quad I = \\frac{3600 \\times 7 \\times 2}{100}",
+                "I = \\$504.00",
+                [
+                    "Calculate Selling Price: S.P. = \\frac{80}{100} \\times 6000 = \\$4,800.00",
+                    "Calculate Principal Invested: P = 4800 - 1200 = \\$3,600.00",
+                    "Apply Simple Interest formula: I = \\frac{P \\times R \\times T}{100} = \\frac{3600 \\times 7 \\times 2}{100}",
+                    "Evaluate final interest: I = \\$504.00"
+                ]
+            ),
+            (
+                "Chidi bought equipment for $8,000.00 and sold at 75% of cost. He spent $2,000.00 and deposited the rest at 4% p.a. simple interest for 5 years. Calculate the interest.",
+                "\\text{S.P.} = 8000 \\times 0.75 = 6000, \\quad P = 6000 - 2000 = 4000, \\quad I = \\frac{4000 \\times 4 \\times 5}{100}",
+                "I = \\$800.00",
+                [
+                    "Calculate Selling Price: S.P. = \\frac{75}{100} \\times 8000 = \\$6,000.00",
+                    "Calculate Principal Invested: P = 6000 - 2000 = \\$4,000.00",
+                    "Apply Simple Interest formula: I = \\frac{P \\times R \\times T}{100} = \\frac{4000 \\times 4 \\times 5}{100}",
+                    "Evaluate final interest: I = \\$800.00"
+                ]
+            )
+        ]
+        prob, latex_eq, ans, steps = random.choice(cm_samples)
+        return {
+            "success": True,
+            "original_equation": equation,
+            "twin_equation": prob,
+            "twin_equation_latex": latex_eq,
+            "correct_answer_latex": ans,
+            "solution_steps": steps,
+            "parameters": {"type": "commercial_mathematics"}
+        }
+
+    # 5. Quadratic Equations Default (Guaranteed Integer Roots)
     x = sp.Symbol('x')
 
     # Generate random integer roots r1, r2 between -8 and 8 (excluding 0)
