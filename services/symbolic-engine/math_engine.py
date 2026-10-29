@@ -137,46 +137,87 @@ def safe_sympify(expression: str) -> sp.Expr:
 
 
 def solve_equation_symbolic(equation: str, solve_for: str = "x") -> Dict[str, Any]:
-    """Solves an equation deterministically and extracts pedagogical milestones.
+    """Solves an equation or evaluates a mathematical expression deterministically.
     
-    Production Safeguard: Zero LLM hallucination for mathematical roots.
+    Supports:
+    - Polynomial equations (linear, quadratic, cubic, higher-order)
+    - Non-polynomial equations (exponential/indicial, radical, rational, trigonometric)
+    - Pure arithmetic/numerical expressions (word-problem verification calculator)
+    
+    Production Safeguard: Zero LLM hallucination for mathematical roots and arithmetic.
     """
     var = sp.Symbol(solve_for)
     expr = safe_sympify(equation)
 
-    # Check if quadratic in target variable
-    degree = sp.degree(expr, var) if expr.has(var) else None
+    # Case 1: Pure numerical / arithmetic expression (no free variables)
+    if not expr.free_symbols:
+        simplified_val = sp.simplify(expr)
+        num_roots: List[float] = []
+        try:
+            num_roots.append(round(float(sp.N(simplified_val)), 6))
+        except Exception:
+            pass
+        return {
+            "success": True,
+            "equation": equation,
+            "latex_equation": sp.latex(expr),
+            "solution_latex": sp.latex(simplified_val),
+            "numerical_roots": num_roots,
+            "discriminant": None,
+            "factored_latex": None,
+            "milestones": {"evaluated_value": str(simplified_val)},
+            "operation": "evaluate",
+            "topic_label": "Numerical Evaluation"
+        }
+
+    # Case 2: If target variable 'solve_for' is not in expression, auto-select the free symbol
+    if not expr.has(var) and len(expr.free_symbols) == 1:
+        var = next(iter(expr.free_symbols))
+        solve_for = str(var)
+
+    # Safely check polynomial degree (non-polynomials like 2**x raise PolynomialError)
+    degree: Optional[int] = None
+    if expr.has(var):
+        try:
+            deg_val = sp.degree(expr, var)
+            if deg_val is not sp.oo and deg_val is not -sp.oo:
+                degree = int(deg_val)
+        except Exception:
+            degree = None
+
     milestones: Dict[str, Any] = {}
     discriminant: Optional[float] = None
     factored_latex: Optional[str] = None
-    topic_label = "Algebraic Expression"
+    topic_label = "Algebraic Equation" if degree is not None else "Transcendental / Indicial Equation"
 
     if degree == 2:
         topic_label = "Quadratic Equations"
-        poly = sp.Poly(expr, var)
-        coeffs = poly.all_coeffs()  # [a, b, c]
-        if len(coeffs) == 3:
-            a, b, c = coeffs
-            delta = b**2 - 4*a*c
-            try:
-                discriminant = float(delta)
-            except Exception:
-                discriminant = None
-            milestones['a'] = str(a)
-            milestones['b'] = str(b)
-            milestones['c'] = str(c)
-            milestones['discriminant'] = str(delta)
-            milestones['nature_of_roots'] = (
-                "Real and Distinct" if delta > 0 else
-                "Real and Equal" if delta == 0 else
-                "Complex / Non-Real"
-            )
-            # Try factoring
-            try:
-                factored = sp.factor(expr)
-                factored_latex = sp.latex(factored) + " = 0"
-            except Exception:
-                factored_latex = None
+        try:
+            poly = sp.Poly(expr, var)
+            coeffs = poly.all_coeffs()  # [a, b, c]
+            if len(coeffs) == 3:
+                a, b, c = coeffs
+                delta = b**2 - 4*a*c
+                try:
+                    discriminant = float(delta)
+                except Exception:
+                    discriminant = None
+                milestones['a'] = str(a)
+                milestones['b'] = str(b)
+                milestones['c'] = str(c)
+                milestones['discriminant'] = str(delta)
+                milestones['nature_of_roots'] = (
+                    "Real and Distinct" if delta > 0 else
+                    "Real and Equal" if delta == 0 else
+                    "Complex / Non-Real"
+                )
+                try:
+                    factored = sp.factor(expr)
+                    factored_latex = sp.latex(factored) + " = 0"
+                except Exception:
+                    factored_latex = None
+        except Exception:
+            pass
     elif degree == 1:
         topic_label = "Linear Equations"
     elif degree is not None and degree > 2:
@@ -184,6 +225,12 @@ def solve_equation_symbolic(equation: str, solve_for: str = "x") -> Dict[str, An
 
     # Solve deterministically
     solutions = sp.solve(expr, var)
+
+    # Filter out complex solutions when real solutions exist (common in exponential roots)
+    if isinstance(solutions, list) and len(solutions) > 1:
+        real_sols = [s for s in solutions if sp.im(s) == 0]
+        if real_sols:
+            solutions = real_sols
 
     # Format solution LaTeX
     if isinstance(solutions, list):
@@ -462,7 +509,49 @@ def generate_parametric_twin(equation: str, topic: str = "Quadratic Equations") 
             "parameters": {"type": "commercial_mathematics"}
         }
 
-    # 5. Quadratic Equations Default (Guaranteed Integer Roots)
+    # 5. Non-Quadratic Universal Perturbation Guard:
+    # Never degrade a non-quadratic topic into a random quadratic equation!
+    norm_topic = topic.lower()
+    is_quadratic = (
+        "quadratic" in norm_topic
+        or "factori" in norm_topic
+        or ("x^2" in equation or "x**2" in equation or "x²" in equation)
+    )
+    if not is_quadratic:
+        delta = random.choice([2, 3, 4])
+        def _shift_num(m: re.Match) -> str:
+            val = int(m.group(0))
+            if val in (0, 1, 100):
+                return m.group(0)
+            return str(val + delta if val < 20 else int(val * 1.5))
+
+        perturbed_eq = re.sub(r'(?<![\^_a-zA-Z\\])\b\d+\b(?!\s*%)', _shift_num, equation)
+        if perturbed_eq == equation:
+            perturbed_eq = f"{equation}"
+
+        ans_latex = f"\\text{{Apply {topic} formula}}"
+        try:
+            solved = solve_equation_symbolic(perturbed_eq, "x")
+            if solved.get("solution_latex") and "No solution" not in solved["solution_latex"]:
+                ans_latex = solved["solution_latex"]
+        except Exception:
+            pass
+
+        return {
+            "success": True,
+            "original_equation": equation,
+            "twin_equation": perturbed_eq,
+            "twin_equation_latex": perturbed_eq,
+            "correct_answer_latex": ans_latex,
+            "solution_steps": [
+                f"Identify parameters for {topic}: {perturbed_eq}",
+                f"Apply the {topic} governing method and simplify.",
+                f"Verified result: {ans_latex}"
+            ],
+            "parameters": {"type": "structural_perturbation", "topic": topic}
+        }
+
+    # 6. Quadratic Equations Generator (ONLY when genuinely quadratic)
     x = sp.Symbol('x')
 
     # Generate random integer roots r1, r2 between -8 and 8 (excluding 0)

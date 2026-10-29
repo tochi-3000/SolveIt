@@ -35,6 +35,7 @@ const CURATED_NEXT_EXAMPLES = [
 
 interface ScaffoldingSolutionViewProps {
   solution: PedagogicalSolution;
+  originalProblemText?: string;
   pedagogicalLevel: PedagogicalLevel;
   onChangePedagogicalLevel?: (level: PedagogicalLevel) => void;
   languageMode: LanguageMode;
@@ -47,6 +48,7 @@ interface ScaffoldingSolutionViewProps {
 
 export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = ({
   solution,
+  originalProblemText,
   pedagogicalLevel,
   onChangePedagogicalLevel,
   languageMode,
@@ -79,25 +81,59 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
     setNextStepPreference('unselected');
     setGeneratedTwin(null);
     setTwinError(null);
-  }, [solution.extractedLatex]);
+  }, [solution.extractedLatex, solution.topic]);
 
   const fetchTwinProblem = async (forceRegenerate = false) => {
     if (generatedTwin && !forceRegenerate) return generatedTwin;
+
+    // Zero-Latency Path: If the primary AI breakdown already synthesized an isomorphic twinPracticeProblem,
+    // use it immediately without an extra round-trip unless the user explicitly requested another variation.
+    if (
+      !forceRegenerate &&
+      solution.twinPracticeProblem &&
+      (solution.twinPracticeProblem.twin_equation || solution.twinPracticeProblem.twin_equation_latex)
+    ) {
+      const pregenerated = solution.twinPracticeProblem;
+      const readableEq = (
+        pregenerated.twin_equation ||
+        pregenerated.twin_equation_latex ||
+        ''
+      ).trim();
+      const latexEq = (
+        pregenerated.twin_equation_latex ||
+        pregenerated.twin_equation ||
+        ''
+      ).trim();
+      const twinObj = { equation: readableEq, latex: latexEq };
+      setGeneratedTwin(twinObj);
+      return twinObj;
+    }
+
     setIsGeneratingTwin(true);
     setTwinError(null);
     try {
+      const fullProblemContext =
+        originalProblemText?.trim() ||
+        (solution.discriminantSummary
+          ? `${solution.discriminantSummary} (${solution.extractedLatex || ''})`
+          : solution.extractedLatex) ||
+        '3x^2 - 5x - 2 = 0';
+
       const res = await fetch('/api/generate-twin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          equation: solution.extractedLatex || '3x^2 - 5x - 2 = 0',
-          topic: solution.topic || 'Quadratic Equations',
+          equation: fullProblemContext,
+          topic: solution.topic || 'General Mathematics',
         }),
       });
       const data = await res.json();
-      if (data.twin_equation_latex) {
-        const cleanEq = data.twin_equation_latex.replace(/\$/g, '').trim();
-        const twinObj = { equation: cleanEq, latex: data.twin_equation_latex };
+      if (data.twin_equation_latex || data.twin_equation) {
+        const readableEq = (data.twin_equation || data.twin_equation_latex || '')
+          .replace(/^\$+|\$+$/g, '')
+          .trim();
+        const latexEq = (data.twin_equation_latex || data.twin_equation || '').trim();
+        const twinObj = { equation: readableEq, latex: latexEq };
         setGeneratedTwin(twinObj);
         return twinObj;
       } else {
@@ -115,12 +151,12 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
   const handleSelectPreference = async (pref: 'practice' | 'example') => {
     setNextStepPreference(pref);
     if (pref === 'practice') {
-      await fetchTwinProblem();
+      await fetchTwinProblem(false);
     }
   };
 
   const handleBreakdownTwinExample = async () => {
-    const twin = await fetchTwinProblem(true);
+    const twin = await fetchTwinProblem(false);
     if (twin && onSeeAnotherExample) {
       onSeeAnotherExample(twin.equation);
     }
@@ -576,7 +612,14 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                 <p className="text-xs text-[#64748b] dark:text-[#94a3b8]">
                   Test your understanding with this matching twin problem. It shares the exact same methodology as the one you just learned:
                 </p>
-                <div className="py-4 px-4 bg-[#f8fafc] dark:bg-[#0f172a] rounded-[10px] border border-[#e2e8f0] dark:border-[#1e293b] text-center">
+                <div className="py-4 px-4 bg-[#f8fafc] dark:bg-[#0f172a] rounded-[10px] border border-[#e2e8f0] dark:border-[#1e293b] text-center space-y-2">
+                  {generatedTwin.equation &&
+                    generatedTwin.equation !== generatedTwin.latex &&
+                    /[a-zA-Z]{4,}/.test(generatedTwin.equation) && (
+                      <p className="text-xs sm:text-sm font-medium text-[#0f172a] dark:text-[#f8fafc] leading-relaxed">
+                        {generatedTwin.equation}
+                      </p>
+                    )}
                   <MathDisplay
                     value={generatedTwin.latex}
                     displayMode

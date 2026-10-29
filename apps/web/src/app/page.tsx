@@ -841,6 +841,7 @@ export default function HomePage() {
     return (
       <ScaffoldingSolutionView
         solution={aiSolution}
+        originalProblemText={museTestEquation}
         pedagogicalLevel={pedagogicalLevel}
         onChangePedagogicalLevel={(lvl) => {
           setPedagogicalLevel(lvl);

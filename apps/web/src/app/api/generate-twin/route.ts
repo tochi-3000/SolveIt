@@ -59,10 +59,9 @@ CRITICAL ARCHITECTURAL INVARIANTS:
           },
         ],
         temperature: 0.25,
-        max_tokens: 1024,
-        response_format: { type: 'json_object' },
+        max_tokens: 3500, // Must allow full chain-of-thought reasoning tokens on muse-spark-1.3
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!res.ok) {
@@ -77,23 +76,13 @@ CRITICAL ARCHITECTURAL INVARIANTS:
     const parsed = cleanAndExtractJson<any>(rawText);
     if (!parsed || !parsed.twin_equation_latex) return null;
 
-    // Topic Invariant Safeguard:
-    // If requested topic is non-quadratic, reject if output looks like a standard quadratic polynomial
-    const normTopic = topic.toLowerCase();
-    const isNonQuadratic =
-      normTopic.includes('commercial') ||
-      normTopic.includes('interest') ||
-      normTopic.includes('percentage') ||
-      normTopic.includes('geometric') ||
-      normTopic.includes('g.p.') ||
-      normTopic.includes('arithmetic') ||
-      normTopic.includes('calculus');
-
+    // Universal Topic Invariant Safeguard:
+    // Unless the original problem/topic is actually a quadratic equation, reject any output that hallucinates a standard quadratic polynomial.
     if (
-      isNonQuadratic &&
+      !isQuadraticProblem(equation, topic) &&
       parsed.twin_equation_latex.includes('x^2') &&
       parsed.twin_equation_latex.includes('= 0') &&
-      !parsed.twin_equation_latex.toLowerCase().includes('t_')
+      !equation.includes('x^2')
     ) {
       console.warn('[Twin LLM] Generated topic mismatch (quadratic instead of target topic), rejecting.');
       return null;
@@ -104,6 +93,61 @@ CRITICAL ARCHITECTURAL INVARIANTS:
     console.warn('[Twin LLM] LLM twin generation failed or timed out:', err?.message || err);
     return null;
   }
+}
+
+/**
+ * Determines whether the original problem/topic is genuinely a Quadratic Equation.
+ * Prevents the inverted anti-pattern of assuming everything is quadratic unless listed otherwise.
+ */
+function isQuadraticProblem(equation: string, topic: string): boolean {
+  const normTopic = topic.toLowerCase();
+  if (normTopic.includes('quadratic') || normTopic.includes('factori')) {
+    return true;
+  }
+  // If topic explicitly specifies another domain, it is not a quadratic equation
+  if (normTopic && normTopic !== 'general mathematics' && normTopic !== 'algebra') {
+    return false;
+  }
+  return /x\^2|x\*\*2|x²/.test(equation) && equation.includes('=');
+}
+
+/**
+ * Universal Structural Perturber (Offline Last-Resort Fallback):
+ * If both LLM and CAS are unreachable on an arbitrary unseen math topic (e.g., Indices, Circle Geometry,
+ * Bearings, Probability, Simultaneous Equations), perturbs standalone numerical constants in the original
+ * problem while preserving exponents, variable subscripts, and problem structure.
+ * Guarantees a non-quadratic problem NEVER degrades into a quadratic equation.
+ */
+function perturbProblemStructurally(equation: string, topic: string) {
+  const scaleFactor = [2, 3][Math.floor(Math.random() * 2)];
+  const perturbedText = equation.replace(
+    /(?<![\^_a-zA-Z\\])(\d+(?:\.\d+)?)(?!\s*%)/g,
+    (match) => {
+      const val = Number(match);
+      if (Number.isNaN(val) || val === 0 || val === 1 || val === 100) return match;
+      // Preserve small bases/exponents like 2, 3, 4 if part of powers, otherwise scale cleanly
+      if (val >= 10) {
+        return String(Math.round(val * 1.5));
+      }
+      return String(val + scaleFactor);
+    }
+  );
+
+  const finalEq = perturbedText !== equation ? perturbedText : `${equation} (Variant)`;
+  return {
+    success: true,
+    original_equation: equation,
+    twin_equation: finalEq,
+    twin_equation_latex: finalEq,
+    correct_answer_latex: `\\text{Apply } \\text{${topic}} \\text{ method}`,
+    solution_steps: [
+      `Identify the given parameters in the ${topic} problem: ${finalEq}`,
+      `Apply the governing ${topic} formula and substitute the updated values.`,
+      `Simplify step-by-step to obtain the verified final result.`,
+    ],
+    topic,
+    parameters: { type: 'structural_perturbation', scaleFactor },
+  };
 }
 
 /**
@@ -345,7 +389,12 @@ function generateFallbackTwin(equation: string, topic: string = 'Quadratic Equat
     };
   }
 
-  // 5. Quadratic / Factoring Default: guaranteed clean integer roots
+  // 5. Non-Quadratic Topic Guard: If the problem is NOT a quadratic equation, NEVER return a quadratic equation!
+  if (!isQuadraticProblem(equation, topic)) {
+    return perturbProblemStructurally(equation, topic);
+  }
+
+  // 6. Quadratic / Factoring Generator (ONLY when the problem is genuinely quadratic)
   const rootsPool = [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5];
   const r1 = rootsPool[Math.floor(Math.random() * rootsPool.length)];
   let r2 = rootsPool[Math.floor(Math.random() * rootsPool.length)];
@@ -396,7 +445,7 @@ export async function POST(req: NextRequest) {
     }
 
     // -------------------------------------------------------------------------
-    // Tier 1: Meta Muse / LLM Dynamic Synthesizer (General Curriculum Coverage)
+    // Tier 1: Meta Muse / LLM Dynamic Synthesizer (Universal Curriculum Coverage)
     // -------------------------------------------------------------------------
     try {
       const llmTwin = await generateTwinWithLlm(equation, topic);
@@ -413,23 +462,15 @@ export async function POST(req: NextRequest) {
     try {
       const result = await generateParametricTwin(equation, topic);
       if (result && result.twin_equation_latex) {
-        // Topic sanity check on Python output:
-        const normTopic = topic.toLowerCase();
-        const isNonQuadratic =
-          normTopic.includes('commercial') ||
-          normTopic.includes('interest') ||
-          normTopic.includes('percentage') ||
-          normTopic.includes('geometric') ||
-          normTopic.includes('g.p.') ||
-          normTopic.includes('arithmetic') ||
-          normTopic.includes('calculus');
-
+        // Universal Topic Invariant Check on Python output:
+        // Never allow Python CAS to return a quadratic equation unless the input was genuinely quadratic.
         if (
-          isNonQuadratic &&
+          !isQuadraticProblem(equation, topic) &&
           result.twin_equation_latex.includes('x^2') &&
-          result.twin_equation_latex.includes('= 0')
+          result.twin_equation_latex.includes('= 0') &&
+          !equation.includes('x^2')
         ) {
-          console.warn('[Twin Router] Python CAS returned quadratic for non-quadratic topic, falling back to topic generator.');
+          console.warn('[Twin Router] Python CAS returned quadratic for non-quadratic topic, falling back to structural generator.');
         } else {
           return NextResponse.json(result);
         }
@@ -442,7 +483,7 @@ export async function POST(req: NextRequest) {
     }
 
     // -------------------------------------------------------------------------
-    // Tier 3: Deterministic Topic-Aware Edge Fallback (Zero Crash Guarantee)
+    // Tier 3: Deterministic Topic-Aware & Structural Edge Fallback
     // -------------------------------------------------------------------------
     const fallback = generateFallbackTwin(equation, topic);
     return NextResponse.json(fallback);

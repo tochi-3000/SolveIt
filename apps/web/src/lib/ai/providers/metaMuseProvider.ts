@@ -151,7 +151,9 @@ export class MetaMuseProvider implements IMathVisionProvider {
           assertNotTruncated(finalChoice);
 
           const rawContent = finalChoice.message.content;
-          const solution = cleanAndExtractJson(rawContent) as PedagogicalSolution;
+          const solution = enforceCognitiveCompression(
+            cleanAndExtractJson(rawContent) as PedagogicalSolution
+          );
 
           const durationMs = Math.round(performance.now() - startTime);
 
@@ -175,7 +177,9 @@ export class MetaMuseProvider implements IMathVisionProvider {
 
         // Direct JSON response without tool calls (rare fallback)
         assertNotTruncated(choice);
-        const solution = cleanAndExtractJson(message.content) as PedagogicalSolution;
+        const solution = enforceCognitiveCompression(
+          cleanAndExtractJson(message.content) as PedagogicalSolution
+        );
 
         return {
           success: true,
@@ -454,20 +458,20 @@ export class MetaMuseProvider implements IMathVisionProvider {
     const fmtSigned = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
     const fmtParen = (n: number) => (n < 0 ? `(${n})` : `${n}`);
 
-    // Build clear, pedagogical level-specific steps (Phase 4 Adaptive Matrix)
+    // Build clear, atomic, zero-fluff step explanations
     let step1Explanation = '';
     if (level === 'beginner') {
       step1Explanation = isPidgin
-        ? `🟢 Foundation Step (Balogun Market Style): Imagine say you dey Balogun market to trade items. We need two numbers wey go multiply give $${acNum}$ and balance with $${bNum}$. The two numbers na $${factorP}$ and $${factorQ}$.`
-        : `🟢 Foundation Step (Market Trading Analogy): Imagine you are trading at the market with ₦${Math.abs(acNum)} balance. We find two friendly factor numbers that multiply to $${acNum}$ and add up to $${bNum}$. The numbers are $${factorP}$ and $${factorQ}$.`;
+        ? `Find two numbers wey go multiply give $${acNum}$ and add give $${bNum}$. Those two numbers na $${factorP}$ and $${factorQ}$.`
+        : `Find two numbers that multiply to $${acNum}$ ($${aNum} \\times ${cNum}$) and add up to $${bNum}$. Those numbers are $${factorP}$ and $${factorQ}$.`;
     } else if (level === 'expert') {
       step1Explanation = isPidgin
-        ? `🔴 Distinction Speed-Run [Target <= 3 mins]: Mentally spot the factor pair for $ac = ${acNum}$ and $b = ${bNum}$ ($${factorP}, ${factorQ}$) without writing unnecessary scratch work.`
-        : `🔴 Distinction Socratic Pace [Target <= 3 mins]: Mentally compute the factor pair for $ac = ${acNum}$ and $b = ${bNum}$. The optimal factors are $${factorP}$ and $${factorQ}$. Proceed to grouping to save examination minutes.`;
+        ? `Spot the factor pair for $ac = ${acNum}$ and $b = ${bNum}$: $${factorP}$ and $${factorQ}$.`
+        : `Identify factors of $ac = ${acNum}$ that sum to $b = ${bNum}$: $${factorP}$ and $${factorQ}$.`;
     } else {
       step1Explanation = isPidgin
-        ? `🟡 [M1 Method Mark] WAEC Standard: Multiply first and last numbers ($${aNum} \\times ${cNum} = ${acNum}$). Find two numbers wey multiply give $${acNum}$ and add give $${bNum}$: $${factorP}$ and $${factorQ}$.`
-        : `🟡 [M1 Method Mark] Standard WAEC Procedure: Identify $a = ${aNum}$, $b = ${bNum}$, $c = ${cNum}$. Product $ac = ${acNum}$. Find factor pair summing to $b = ${bNum}$: $${factorP}$ and $${factorQ}$.`;
+        ? `Multiply first and last numbers ($${aNum} \\times ${cNum} = ${acNum}$), then pick factors summing to $${bNum}$: $${factorP}$ and $${factorQ}$.`
+        : `Multiply $a \\times c = ${acNum}$, then find the two factors that add up to $b = ${bNum}$: $${factorP}$ and $${factorQ}$.`;
     }
 
     const step1Math =
@@ -613,4 +617,47 @@ function normalizeToSymPy(input: string): string {
     s = `${s} = 0`;
   }
   return s;
+}
+
+/**
+ * Post-Processing Cognitive Compression Guard:
+ * Deterministic sanitizer that strips cheerleading fluff, fear-assurances, and forced metaphors
+ * if an LLM ever leaks them into step explanations, ensuring every step starts directly with
+ * the mathematical action and reason.
+ */
+function enforceCognitiveCompression(solution: PedagogicalSolution): PedagogicalSolution {
+  if (!solution || !Array.isArray(solution.steps)) {
+    return solution;
+  }
+
+  solution.steps = solution.steps.map((st) => {
+    if (!st.explanation) return st;
+
+    const sentences = st.explanation
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const filtered = sentences.filter((s) => {
+      const lower = s.toLowerCase();
+      if (lower.startsWith('well done')) return false;
+      if (lower.startsWith('do not fear') || lower.includes('this is easy')) return false;
+      if (lower.startsWith('the simplest method here is')) return false;
+      if (lower.startsWith('no shake') || lower.startsWith('imagine say')) return false;
+      return true;
+    });
+
+    const core = (filtered.length > 0 ? filtered.join(' ') : st.explanation)
+      .replace(/^(?:first,\s*)?like\s+[^,]+,\s*/i, '')
+      .trim();
+
+    const cleanedExplanation = core ? core.charAt(0).toUpperCase() + core.slice(1) : st.explanation;
+
+    return {
+      ...st,
+      explanation: cleanedExplanation,
+    };
+  });
+
+  return solution;
 }

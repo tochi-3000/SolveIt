@@ -2,14 +2,12 @@
  * Meta Muse Voice Transcribe & Professor SolvAm Voice Q&A Route
  * Path: /api/math/voice-question
  *
- * Allows students to ask contextual voice or typed questions on any specific solution step.
- * Uses Meta Muse Voice Transcribe for raw audio payloads and Meta Muse Spark 1.3
- * to generate dynamic pedagogical answers tailored to the student's exact question and active step.
- *
- * Production Safeguards:
- * - Strict input validation (never substitutes fake questions when speech capture is silent)
- * - Dynamic LLM synthesis via Meta Muse Spark 1.3 with step-aware offline fallback
- * - Returns clean inline-LaTeX ($...$) answers and plain-text audio narration for TTS
+ * Implements the "Cause-First" Cognitive Compression Architecture:
+ * - Sentence 1 directly answers the student's "Why / How / What" question using the step's exact numbers.
+ * - Strict 2-sentence / 35-word ceiling at a Grade-7 reading level.
+ * - Zero parroting of the existing step explanation and zero cheerleading filler.
+ * - Full reasoning token budget (max_tokens: 2500) so Meta Muse Spark 1.3 never truncates mid-thought.
+ * - Algebraic Transition Analyzer fallback that inspects the actual math transformation instead of echoing prose.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -69,7 +67,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Step 2: Formulate Professor SolvAm's Answer (Live Meta Muse Spark 1.3 with dynamic step-aware fallback)
+    // Step 2: Formulate Professor SolvAm's Direct Answer (Meta Muse Spark 1.3 + Algebraic Analyzer Fallback)
     let answer: TutorClarification | null = null;
     let modelUsed = 'Meta Muse Spark 1.3 + Muse Voice';
 
@@ -85,10 +83,10 @@ export async function POST(req: NextRequest) {
         );
       } catch (llmErr) {
         console.warn('Meta Muse Tutor LLM fallback triggered:', llmErr);
-        modelUsed = 'Meta Muse Voice (Local Step-Aware Fallback)';
+        modelUsed = 'Meta Muse Voice (Algebraic Transition Analyzer)';
       }
     } else {
-      modelUsed = 'Meta Muse Voice (Local Step-Aware Fallback)';
+      modelUsed = 'Meta Muse Voice (Algebraic Transition Analyzer)';
     }
 
     if (!answer) {
@@ -152,21 +150,26 @@ async function callMetaMuseTutorLLM(
 ): Promise<TutorClarification> {
   const apiUrl = process.env.META_API_URL || 'https://api.meta.ai/v1/chat/completions';
 
-  const systemPrompt = `You are Professor SolvAm, a warm, crystal-clear WAEC Mathematics Tutor.
-A student is looking at Step ${stepNumber} of a worked math solution and just asked you a specific question.
-Active Step Explanation: "${stepExplanation}"
-Active Step Equation (LaTeX): "${stepLatex}"
-Language Mode: ${isPidgin ? 'Friendly Nigerian Pidgin English' : 'Clear, conversational Standard English'}
+  const systemPrompt = `You are Professor SolvAm, a math tutor famous for explaining things in the simplest, shortest, most direct way possible.
+A student is looking at Step ${stepNumber} of a math solution and asked: "${question}"
 
-RULES:
-1. Directly and specifically answer the student's exact question ("${question}") using the numbers and math from Step ${stepNumber}.
-2. Keep your answer concise (2 to 3 sentences) and easy to understand.
-3. Wrap any inline math formulas or equations in single dollar signs $...$ (e.g. $2 \\times 3 = 6$ or $(x + 2)(x + 3) = 0$).
-4. Return ONLY valid JSON with this exact structure:
+Step ${stepNumber} Math Transition (LaTeX): "${stepLatex}"
+Step ${stepNumber} Context: "${stepExplanation}"
+Language: ${isPidgin ? 'Simple, direct Nigerian Pidgin English' : 'Simple, plain Standard English (Grade 7 reading level)'}
+
+STRICT DIRECT-ANSWER RULES:
+1. ANSWER IMMEDIATELY IN SENTENCE 1: Start your very first sentence by directly answering the student's question ("Because..." or "We used... because...").
+   - Example: If the student asks "Why did we divide the entire equation by 2?" for $2x^2 + 2x - 12 = 0 \\implies x^2 + x - 6 = 0$, answer: "We divided by $2$ because every number in the equation ($2$, $2$, and $-12$) can be divided evenly by $2$. This makes the numbers smaller and much easier to factor."
+2. NEVER REPEAT THE STEP DESCRIPTION: Do NOT copy or parrot "${stepExplanation}". The student already read that and is asking for a simpler clarification.
+3. ZERO FLUFF OR PRAISE: Never write "Great question!", "Well done!", "Do not fear!", "In simple terms for Step ${stepNumber}:", or market analogies.
+4. HARD LENGTH CAP: Maximum 2 short sentences (under 35 words total).
+5. Wrap any inline math or numbers/expressions in single dollar signs $...$ (e.g. $2x^2 + 2x - 12 = 0$).
+
+Return ONLY valid JSON with this exact structure:
 {
-  "text": "2-3 sentence direct answer to the student's question with inline math wrapped in $...$",
+  "text": "1-2 short, ultra-simple sentences directly answering the question (max 35 words), with math wrapped in $...$",
   "audioText": "Plain spoken version of the answer for text-to-speech (no $ signs or LaTeX backslashes)",
-  "waecTip": "1-sentence WAEC Examiner tip relevant to this step, wrapping any math in $...$"
+  "waecTip": "1 short sentence WAEC tip for this specific operation, wrapping any math in $...$"
 }`;
 
   const res = await fetch(apiUrl, {
@@ -181,10 +184,11 @@ RULES:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: question },
       ],
-      temperature: 0.2,
-      max_tokens: 600,
+      temperature: 0.15,
+      // Production Safeguard: Allocate 2500 tokens so reasoning models never truncate during internal CoT
+      max_tokens: 2500,
     }),
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(25000),
   });
 
   if (!res.ok) {
@@ -207,10 +211,15 @@ RULES:
     audioText: parsed.audioText || parsed.text,
     waecTip:
       parsed.waecTip ||
-      `[WAEC Marking Guide] Showing Step ${stepNumber} ($${stepLatex}$) clearly secures your procedural mark.`,
+      `[WAEC Marking Guide] Writing $${stepLatex.replace(/^\$+|\$+$/g, '')}$ clearly secures your step mark.`,
   };
 }
 
+/**
+ * Deterministic Algebraic Transition & Question Intent Analyzer.
+ * Never parrots the existing step explanation verbatim; instead, analyzes the mathematical
+ * transformation in `stepLatex` and directly answers the student's "Why / How / What" question.
+ */
 function formulatePedagogicalAnswer(
   question: string,
   stepNumber: number,
@@ -221,7 +230,36 @@ function formulatePedagogicalAnswer(
   const qLower = question.toLowerCase();
   const cleanLatex = stepLatex.replace(/^\$+|\$+$/g, '').trim();
 
-  // 1. Questions specifically asking how we got a, b, or c (coefficients of the quadratic equation)
+  // Split transition if stepLatex has \implies or \Rightarrow
+  const transitionParts = cleanLatex.split(/\\implies|\\Rightarrow|=>/).map((s) => s.trim());
+  const beforeMath = transitionParts[0] || cleanLatex;
+  const afterMath = transitionParts.length > 1 ? transitionParts[transitionParts.length - 1] : null;
+
+  // 1. Questions about dividing / common factor / simplifying the equation
+  //    e.g. "Why did we divide the entire equation by 2?"
+  const divMatch =
+    qLower.match(/divide[^\d-]*(-?\d+)/i) ||
+    explanation.match(/divided?\s+by\s+\$?(-?\d+)\$?/i);
+  if (
+    qLower.includes('divide') ||
+    qLower.includes('divisible') ||
+    qLower.includes('reduce') ||
+    qLower.includes('smaller') ||
+    divMatch
+  ) {
+    const divisor = divMatch ? divMatch[1] : 'that common number';
+    const text = isPidgin
+      ? `We divide by $${divisor}$ because every number inside $${beforeMath}$ fit divide evenly by $${divisor}$ without remainder. Dis one go make the numbers smaller${afterMath ? ` ($${afterMath}$)` : ''} and much easier to solve.`
+      : `We used $${divisor}$ because every term in $${beforeMath}$ is evenly divisible by $${divisor}$. Dividing through shrinks the equation${afterMath ? ` into $${afterMath}$` : ''}, making the numbers smaller and much easier to solve.`;
+
+    return {
+      text,
+      audioText: text.replace(/\$/g, ''),
+      waecTip: `[WAEC Tip] Whenever all terms share a common factor like $${divisor}$, dividing every term on both sides makes factoring much faster.`,
+    };
+  }
+
+  // 2. Questions asking how we got a, b, or c (coefficients of the quadratic equation)
   if (
     /\b(a|b|c)\b/.test(qLower) &&
     (qLower.includes('get') ||
@@ -232,77 +270,112 @@ function formulatePedagogicalAnswer(
       qLower.includes('how'))
   ) {
     const text = isPidgin
-      ? `Every quadratic equation dey follow the standard pattern $ax^2 + bx + c = 0$. Look the original equation: $a$ na the number in front of $x^2$, $b$ na the middle number in front of $x$, and $c$ na the last constant number wey stand alone. For this step ($${cleanLatex}$), we just pick $a$ and $c$ directly from the question and multiply them!`
-      : `Every quadratic equation follows the standard form $ax^2 + bx + c = 0$: $a$ is the coefficient in front of $x^2$, $b$ is the middle coefficient in front of $x$, and $c$ is the constant number at the end (including its $+$ or $-$ sign). In Step ${stepNumber} ($${cleanLatex}$), we take $a$ and $c$ directly from those positions in the original equation and multiply them together.`;
+      ? `For any quadratic equation $ax^2 + bx + c = 0$, $a$ na the number in front of $x^2$, $b$ na the number in front of $x$, and $c$ na the last number wey stand alone.`
+      : `In standard form $ax^2 + bx + c = 0$, $a$ is the number in front of $x^2$, $b$ is the middle number in front of $x$, and $c$ is the standalone number at the end.`;
 
     return {
       text,
-      audioText: text,
-      waecTip: `[M1 Method Mark] Always include the negative sign when reading $b$ or $c$ from $ax^2 + bx + c = 0$ (for example, $-2$ means $c = -2$, not $+2$).`,
+      audioText: text.replace(/\$/g, ''),
+      waecTip: `[WAEC Tip] Always include the $-$ sign when reading $b$ or $c$ (for example, $-12$ means $c = -12$, not $+12$).`,
     };
   }
 
-  // 2. Questions about why/how specific factor numbers were chosen
+  // 3. Questions about why/how specific factor numbers were chosen or splitting the middle term
   if (
     qLower.includes('number') ||
     qLower.includes('choose') ||
     qLower.includes('pick') ||
     qLower.includes('multiply') ||
     qLower.includes('add') ||
+    qLower.includes('split') ||
+    qLower.includes('factor') ||
     qLower.includes('how did we get') ||
     qLower.includes('where did')
   ) {
     const text = isPidgin
-      ? `For Step ${stepNumber} ($${cleanLatex}$), we dey find two numbers wey satisfy two rules at the same time: when you multiply them, dem go give $a \\times c$, and when you add them, dem go give the middle number $b$. Only one pair of numbers fit work for both rules!`
-      : `In Step ${stepNumber} ($${cleanLatex}$), we test factor pairs of $a \\times c$ until we find the unique pair that adds up to the middle coefficient $b$. That is why these specific numbers work—they satisfy both the multiplication rule and the addition rule simultaneously.`;
+      ? `We pick those exact numbers for $${cleanLatex}$ because na only dem fit multiply to give the target product and add up to give the middle number at the same time.`
+      : `We used those specific numbers in $${cleanLatex}$ because they are the only pair that multiply to the target product and add up to the middle coefficient at the same time.`;
 
     return {
       text,
-      audioText: text,
-      waecTip: `[M1 Method Mark] Finding the correct factor pair in $${cleanLatex}$ secures the first procedural Method Mark on WAEC Paper 2.`,
+      audioText: text.replace(/\$/g, ''),
+      waecTip: `[M1 Method Mark] Writing the correct factor pair in $${cleanLatex}$ secures your procedural Method Mark.`,
     };
   }
 
-  // 3. Questions about signs (+/-) or brackets
+  // 4. Questions about signs (+/-), moving across '=', or setting brackets to zero
   if (
     qLower.includes('sign') ||
     qLower.includes('negative') ||
     qLower.includes('minus') ||
     qLower.includes('plus') ||
+    qLower.includes('zero') ||
     qLower.includes('bracket')
   ) {
     const text = isPidgin
-      ? `Sharp question about the signs! For Step ${stepNumber} ($${cleanLatex}$), the signs must match both the multiplication and addition rules. Also remember say when you set a bracket to zero and move a number across $=$, plus go turn minus and minus go turn plus!`
-      : `Great question regarding signs in Step ${stepNumber} ($${cleanLatex}$)! Inside the factored brackets, the signs come directly from the factor pair you found, whereas when you set each factor equal to $0$ and isolate $x$, moving a term across the $=$ sign flips its sign.`;
+      ? `Whenever a number cross the $=$ sign go the other side, e sign go flip (minus go turn plus, and plus go turn minus) so both sides go remain equal.`
+      : `When you move a number across the $=$ sign to isolate $x$, its sign always flips ($-$ becomes $+$, and $+$ becomes $-$) to keep both sides of the equation equal.`;
 
     return {
       text,
-      audioText: text,
-      waecTip: `[M1/A1 Sign Check] Always double-check that multiplying the two signs gives the constant term's sign and adding them gives the middle term's sign.`,
+      audioText: text.replace(/\$/g, ''),
+      waecTip: `[A1 Accuracy Check] Substitute your final $x$ value back into the original equation to verify that LHS = $0$.`,
     };
   }
 
-  // 4. Questions about WAEC marks or examiners
-  if (qLower.includes('waec') || qLower.includes('mark') || qLower.includes('examiner') || qLower.includes('grade')) {
+  // 5. Questions about WAEC marks or examiners
+  if (qLower.includes('waec') || qLower.includes('mark') || qLower.includes('examiner') || qLower.includes('tip')) {
     const text = isPidgin
-      ? `For WAEC Theory Paper 2, examiners dey mark Step ${stepNumber} ($${cleanLatex}$) to see whether your method correct. Even if you make small mistake later, writing this step clearly go lock your Method Mark!`
-      : `On WAEC Theory Paper 2, examiners inspect Step ${stepNumber} ($${cleanLatex}$) to verify your algebraic method. Writing this transition explicitly locks in your partial credit even if a slip occurs later.`;
+      ? `WAEC examiners dey check Step ${stepNumber} ($${cleanLatex}$) to give you your Method Mark [M1], even if you make mistake for the final answer.`
+      : `WAEC examiners look specifically for $${cleanLatex}$ on your answer sheet to award the Step ${stepNumber} Method Mark, protecting your score even if a later arithmetic slip occurs.`;
 
     return {
       text,
-      audioText: text,
-      waecTip: `[WAEC Rubric Insight] Never skip writing $${cleanLatex}$ on paper—implied steps do not earn standalone Method Marks if your final answer is wrong.`,
+      audioText: text.replace(/\$/g, ''),
+      waecTip: `[WAEC Rubric] Never skip writing $${cleanLatex}$ on its own line—implied steps do not earn partial credit.`,
     };
   }
 
-  // 5. General / "Explain simply" questions tailored to the current step
-  const text = isPidgin
-    ? `Make we break Step ${stepNumber} down well-well: ${explanation} We write $${cleanLatex}$ so both sides of the equation go stay balanced while we move closer to the final answer.`
-    : `In simple terms for Step ${stepNumber}: ${explanation} Writing the milestone as $${cleanLatex}$ keeps the equation balanced and sets up the next step cleanly.`;
+  // 6. General "Explain Step Simply" or any other "Why" question:
+  //    Strip any verbose cheerleading/analogy sentences and explain the algebraic transition directly.
+  const strippedCore = stripVerboseFluff(explanation);
+  const text = afterMath
+    ? isPidgin
+      ? `We rewrite $${beforeMath}$ into $${afterMath}$ to make the equation simpler and one step closer to finding $x$. ${strippedCore}`
+      : `We transform $${beforeMath}$ into $${afterMath}$ so the equation is simpler and one step closer to isolating $x$. ${strippedCore}`
+    : isPidgin
+    ? `For Step ${stepNumber}, ${strippedCore}`
+    : `${strippedCore}`;
 
   return {
     text,
-    audioText: text,
-    waecTip: `[WAEC Guideline] Always write $${cleanLatex}$ on its own line so the examiner can award your step mark immediately.`,
+    audioText: text.replace(/\$/g, ''),
+    waecTip: `[WAEC Guideline] Write $${cleanLatex}$ clearly on its own line so the examiner can award your step mark immediately.`,
   };
+}
+
+/**
+ * Strips cheerleading filler, fear-assurances, and forced analogies from a step explanation
+ * so only the core mathematical instruction remains.
+ */
+function stripVerboseFluff(raw: string): string {
+  const sentences = raw
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const filtered = sentences.filter((s) => {
+    const lower = s.toLowerCase();
+    if (lower.startsWith('well done')) return false;
+    if (lower.startsWith('do not fear') || lower.includes('this is easy')) return false;
+    if (lower.startsWith('the simplest method here is')) return false;
+    if (lower.startsWith('no shake') || lower.startsWith('imagine say')) return false;
+    return true;
+  });
+
+  const core = (filtered.length > 0 ? filtered.join(' ') : raw)
+    .replace(/^first,\s*like\s+[^,]+,\s*/i, '')
+    .trim();
+
+  return core.charAt(0).toUpperCase() + core.slice(1);
 }
