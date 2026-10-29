@@ -164,7 +164,8 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({
     if (!value) return null;
 
     // If caller explicitly requested displayMode (e.g. step mathLatex or finalAnswerLatex),
-    // strip any redundant outer $...$ or $$...$$ wrapper and render as block KaTeX.
+    // strip any redundant outer $...$ or $$...$$ wrapper and render as block KaTeX,
+    // BUT ONLY IF it is a standalone math equation, NOT natural-language prose or a word problem!
     if (displayMode) {
       const stripped = value
         .trim()
@@ -173,11 +174,11 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({
         .replace(/^\\\(([\s\S]*)\\\)$/, '$1')
         .replace(/^\$([^\$]+)\$$/, '$1');
 
-      if (!/(?:\$\$|\\\[|\\\(|\$)/.test(stripped)) {
+      if (!/(?:\$\$|\\\[|\\\(|\$)/.test(stripped) && isStandaloneEquation(stripped)) {
         return (
           <span
             dangerouslySetInnerHTML={{ __html: renderKatexHtml(stripped, true) }}
-            className="inline-block"
+            className="inline-block max-w-full overflow-x-auto"
           />
         );
       }
@@ -189,7 +190,7 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({
       return (
         <span
           dangerouslySetInnerHTML={{ __html: renderKatexHtml(value, displayMode) }}
-          className="inline-block"
+          className="inline-block max-w-full overflow-x-auto"
         />
       );
     }
@@ -198,10 +199,14 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({
 
     return segments.map((seg, idx) => {
       if (seg.type === 'text') {
-        return <span key={idx}>{seg.content}</span>;
+        return (
+          <span key={idx} className="whitespace-normal break-words">
+            {seg.content}
+          </span>
+        );
       }
 
-      const isBlock = seg.type === 'block-math' || (displayMode && segments.length === 1);
+      const isBlock = seg.type === 'block-math' || (displayMode && segments.length === 1 && isStandaloneEquation(seg.content));
 
       // If an inline math segment is just a standalone number (e.g., $6$, $+5$, $-2$),
       // render it in the host sans-serif font so prose numbers don't clash or add gaps before punctuation.
@@ -220,8 +225,8 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({
           dangerouslySetInnerHTML={{ __html: html }}
           className={
             isBlock
-              ? 'block my-2 overflow-x-auto text-center'
-              : 'inline align-baseline'
+              ? 'block my-2 overflow-x-auto text-center max-w-full'
+              : 'inline align-baseline max-w-full'
           }
         />
       );
@@ -229,7 +234,11 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({
   }, [value, displayMode]);
 
   const Wrapper = inline ? 'span' : 'div';
-  return <Wrapper className={`leading-relaxed ${className}`}>{renderedElements}</Wrapper>;
+  return (
+    <Wrapper className={`leading-relaxed max-w-full overflow-hidden break-words ${className}`}>
+      {renderedElements}
+    </Wrapper>
+  );
 };
 
 export default MathDisplay;

@@ -1071,15 +1071,17 @@ export default function HomePage() {
                           />
                         </div>
 
-                        <div className="py-5 px-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] text-center">
+                        <div className="py-5 px-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] text-center overflow-hidden">
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] block mb-1">
                             Equation Preview
                           </span>
-                          <MathDisplay
-                            value={museTestEquation}
-                            displayMode
-                            className="text-[#0f172a] dark:text-[#f8fafc] font-bold text-lg"
-                          />
+                          <div className="w-full text-center py-2 px-1 min-h-[50px] flex items-center justify-center overflow-x-auto overflow-y-hidden max-w-full">
+                            <MathDisplay
+                              value={museTestEquation || '3x^2 - 5x - 2 = 0'}
+                              displayMode
+                              className="text-[#0f172a] dark:text-[#f8fafc] font-medium text-sm sm:text-base max-w-full break-words"
+                            />
+                          </div>
                         </div>
 
                         {/* Explain Step-by-Step Action Button placed under the equation */}

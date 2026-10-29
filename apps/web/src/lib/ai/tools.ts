@@ -84,21 +84,30 @@ export async function executeSymbolicTool(
   const start = performance.now();
   let result: any;
 
-  switch (name) {
-    case 'sympy_solve_equation':
-      result = await solveSymbolicEquation(args.equation, args.solve_for || 'x');
-      break;
+  try {
+    switch (name) {
+      case 'sympy_solve_equation':
+        result = await solveSymbolicEquation(args.equation, args.solve_for || 'x');
+        break;
 
-    case 'sympy_verify_steps':
-      result = await verifyStudentSteps(args.original_problem, args.steps || [], args.solve_for || 'x');
-      break;
+      case 'sympy_verify_steps':
+        result = await verifyStudentSteps(args.original_problem, args.steps || [], args.solve_for || 'x');
+        break;
 
-    case 'sympy_generate_twin':
-      result = await generateParametricTwin(args.equation, args.topic || 'Quadratic Equations');
-      break;
+      case 'sympy_generate_twin':
+        result = await generateParametricTwin(args.equation, args.topic || 'Quadratic Equations');
+        break;
 
-    default:
-      throw new Error(`Unknown tool invocation: "${name}"`);
+      default:
+        result = { error: `Unknown tool invocation: "${name}"` };
+    }
+  } catch (toolErr: any) {
+    console.warn(`[Tool Resiliency] Tool ${name} caught non-fatal execution error:`, toolErr?.message);
+    result = {
+      success: false,
+      error: toolErr?.message || 'Tool execution failed',
+      note: 'This equation or word problem could not be parsed directly by SymPy CAS. Proceed to solve analytically using standard WAEC syllabus formulas and step-by-step arithmetic.',
+    };
   }
 
   const durationMs = Math.round(performance.now() - start);
