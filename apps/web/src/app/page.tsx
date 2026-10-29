@@ -869,6 +869,14 @@ export default function HomePage() {
           setVerifyResult(null);
           setActiveView('practice');
         }}
+        onSeeAnotherExample={(nextEq) => {
+          setMuseTestEquation(nextEq);
+          setActiveView('learn');
+          runMultimodalSolve('mockBase64ImageData', nextEq, pedagogicalLevel, languageMode);
+          if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 180, behavior: 'smooth' });
+          }
+        }}
       />
     );
   };

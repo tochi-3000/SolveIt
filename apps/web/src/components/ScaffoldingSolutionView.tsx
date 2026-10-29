@@ -21,7 +21,17 @@ import {
   Info,
   ShieldCheck,
   Image as ImageIcon,
+  Dumbbell,
+  BookOpen,
+  RefreshCw,
 } from 'lucide-react';
+
+const CURATED_NEXT_EXAMPLES = [
+  { title: 'Simple Factoring', equation: 'x^2 + 5x + 6 = 0' },
+  { title: 'WAEC 2024 Q1(a)', equation: '3x^2 - 5x - 2 = 0' },
+  { title: 'Calculus Derivative', equation: 'y = 3x^4 - 5x^2 + 2x - 7' },
+  { title: 'Arithmetic Progression', equation: 'T_n = 5 + (n - 1)*3' },
+];
 
 interface ScaffoldingSolutionViewProps {
   solution: PedagogicalSolution;
@@ -32,6 +42,7 @@ interface ScaffoldingSolutionViewProps {
   speechRate?: number;
   showExaminerWarnings?: boolean;
   onSolveTwin?: (twinEquation: string) => void;
+  onSeeAnotherExample?: (equation: string) => void;
 }
 
 export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = ({
@@ -43,6 +54,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
   speechRate = 1.0,
   showExaminerWarnings = true,
   onSolveTwin,
+  onSeeAnotherExample,
 }) => {
   // Audio Playback State
   const [playingStepIndex, setPlayingStepIndex] = useState<number | null>(null);
@@ -52,9 +64,67 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
   // Progressive Disclosure for Expert Mode
   const [revealedStepIndices, setRevealedStepIndices] = useState<Set<number>>(new Set([1]));
 
+  // Next Step Choice State (Practice vs See Another Example)
+  const [nextStepPreference, setNextStepPreference] = useState<'unselected' | 'practice' | 'example'>('unselected');
+  const [generatedTwin, setGeneratedTwin] = useState<{ equation: string; latex: string } | null>(null);
+  const [isGeneratingTwin, setIsGeneratingTwin] = useState<boolean>(false);
+  const [twinError, setTwinError] = useState<string | null>(null);
+
   // Modals State
   const [isDiagramModalOpen, setIsDiagramModalOpen] = useState<boolean>(false);
   const [voiceStepTarget, setVoiceStepTarget] = useState<ScaffoldingStep | null>(null);
+
+  // Reset next step preference when a new solution is loaded
+  useEffect(() => {
+    setNextStepPreference('unselected');
+    setGeneratedTwin(null);
+    setTwinError(null);
+  }, [solution.extractedLatex]);
+
+  const fetchTwinProblem = async (forceRegenerate = false) => {
+    if (generatedTwin && !forceRegenerate) return generatedTwin;
+    setIsGeneratingTwin(true);
+    setTwinError(null);
+    try {
+      const res = await fetch('/api/generate-twin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          equation: solution.extractedLatex || '3x^2 - 5x - 2 = 0',
+          topic: solution.topic || 'Quadratic Equations',
+        }),
+      });
+      const data = await res.json();
+      if (data.twin_equation_latex) {
+        const cleanEq = data.twin_equation_latex.replace(/\$/g, '').trim();
+        const twinObj = { equation: cleanEq, latex: data.twin_equation_latex };
+        setGeneratedTwin(twinObj);
+        return twinObj;
+      } else {
+        throw new Error(data.error || 'Invalid response from twin generator');
+      }
+    } catch (err: any) {
+      console.error('Failed to generate twin problem:', err);
+      setTwinError('Could not generate twin problem. Please try again.');
+      return null;
+    } finally {
+      setIsGeneratingTwin(false);
+    }
+  };
+
+  const handleSelectPreference = async (pref: 'practice' | 'example') => {
+    setNextStepPreference(pref);
+    if (pref === 'practice') {
+      await fetchTwinProblem();
+    }
+  };
+
+  const handleBreakdownTwinExample = async () => {
+    const twin = await fetchTwinProblem(true);
+    if (twin && onSeeAnotherExample) {
+      onSeeAnotherExample(twin.equation);
+    }
+  };
 
   // Stop audio on unmount
   useEffect(() => {
@@ -383,42 +453,221 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
         </div>
       )}
 
-      {/* Twin Practice Problem Sub-Panel */}
-      {solution.twinPracticeProblem && (
-        <div className="pt-5 border-t border-[#e2e8f0] dark:border-[#1e293b]">
-          <div className="p-5 bg-white dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd] flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
-                <span>Parametric WAEC Twin Practice Problem (SymPy Verified)</span>
+      {/* Interactive Post-Breakdown Next-Steps Controller */}
+      <div className="pt-6 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-4">
+        {nextStepPreference === 'unselected' && (
+          <div className="p-5 sm:p-6 bg-gradient-to-br from-white via-white to-blue-50/40 dark:from-[#0b1120] dark:via-[#0b1120] dark:to-[#1e293b]/50 rounded-[14px] border border-[#e2e8f0] dark:border-[#1e293b] shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold tracking-wide uppercase flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Mastery Checkpoint
               </span>
-
-              {onSolveTwin && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onSolveTwin(
-                      solution.twinPracticeProblem!.twin_equation_latex.replace(/\$/g, '')
-                    )
-                  }
-                  className="px-3 py-1.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/70 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd] flex items-center gap-1 transition"
-                >
-                  <span>Practice This Problem</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              )}
             </div>
 
-            <div className="py-4 px-4 bg-[#f8fafc] dark:bg-[#0f172a] rounded-[8px] text-center">
-              <MathDisplay
-                value={solution.twinPracticeProblem.twin_equation_latex}
-                displayMode
-                className="text-[#0f172a] dark:text-[#f8fafc] font-bold"
-              />
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                Ready for what&apos;s next?
+              </h3>
+              <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-0.5">
+                Choose whether you want to test your understanding with a practice problem or watch another worked example breakdown:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              {/* Choice A: Practice with a Similar Problem */}
+              <button
+                type="button"
+                onClick={() => handleSelectPreference('practice')}
+                className="group text-left p-4 rounded-[12px] bg-white dark:bg-[#131d31] border-2 border-emerald-500/30 hover:border-emerald-500 hover:shadow-md transition-all duration-200 relative overflow-hidden"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="w-9 h-9 rounded-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                    <Dumbbell className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    Recommended
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                  Practice with a Similar Problem
+                </h4>
+                <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 line-clamp-2">
+                  We&apos;ll generate a twin problem with matching structure so you can practice on paper or in the interactive workbook.
+                </p>
+                <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span>Generate practice problem</span>
+                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+
+              {/* Choice B: See Another Example Breakdown */}
+              <button
+                type="button"
+                onClick={() => handleSelectPreference('example')}
+                className="group text-left p-4 rounded-[12px] bg-white dark:bg-[#131d31] border-2 border-blue-500/30 hover:border-blue-500 hover:shadow-md transition-all duration-200"
+              >
+                <div className="w-9 h-9 rounded-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold mb-2">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <h4 className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  See Another Example Breakdown
+                </h4>
+                <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 line-clamp-2">
+                  Watch Professor SolvAm break down a similar twin problem or explore a different WAEC examination question.
+                </p>
+                <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                  <span>Choose an example to learn</span>
+                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* PREFERENCE = 'practice': Show Generated Twin Practice Card */}
+        {nextStepPreference === 'practice' && (
+          <div className="p-5 sm:p-6 bg-white dark:bg-[#0b1120] rounded-[14px] border border-emerald-500/30 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
+                <Dumbbell className="w-4 h-4" />
+                <span>Parametric Twin Practice Problem (SymPy Verified)</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setNextStepPreference('unselected')}
+                className="text-xs text-[#64748b] hover:text-[#0f172a] dark:hover:text-[#f8fafc] underline"
+              >
+                Change choice
+              </button>
+            </div>
+
+            {isGeneratingTwin ? (
+              <div className="py-8 flex flex-col items-center justify-center gap-2 text-center">
+                <RefreshCw className="w-6 h-6 text-emerald-500 animate-spin" />
+                <p className="text-xs font-medium text-[#64748b] dark:text-[#94a3b8]">
+                  Generating a similar twin problem with clean integer roots...
+                </p>
+              </div>
+            ) : generatedTwin ? (
+              <div className="space-y-4">
+                <p className="text-xs text-[#64748b] dark:text-[#94a3b8]">
+                  Test your understanding with this matching twin problem. It shares the exact same methodology as the one you just learned:
+                </p>
+                <div className="py-4 px-4 bg-[#f8fafc] dark:bg-[#0f172a] rounded-[10px] border border-[#e2e8f0] dark:border-[#1e293b] text-center">
+                  <MathDisplay
+                    value={generatedTwin.latex}
+                    displayMode
+                    className="text-[#0f172a] dark:text-[#f8fafc] font-bold text-base sm:text-lg"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fetchTwinProblem(true)}
+                      disabled={isGeneratingTwin}
+                      className="px-3 py-2 rounded-[8px] bg-[#f1f5f9] dark:bg-[#1e293b] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] text-xs font-semibold text-[#475569] dark:text-[#cbd5e1] flex items-center gap-1.5 transition"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingTwin ? 'animate-spin' : ''}`} />
+                      <span>Generate Another Twin</span>
+                    </button>
+                  </div>
+
+                  {onSolveTwin && (
+                    <button
+                      type="button"
+                      onClick={() => onSolveTwin(generatedTwin.equation)}
+                      className="px-4 py-2 rounded-[8px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+                    >
+                      <span>Solve in Practice Workspace</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 text-center">
+                <p className="text-xs text-rose-500 mb-2">{twinError || 'Could not generate twin problem.'}</p>
+                <button
+                  type="button"
+                  onClick={() => fetchTwinProblem(true)}
+                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-[8px] text-xs font-semibold"
+                >
+                  Retry Generation
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PREFERENCE = 'example': Show Example Selector Card */}
+        {nextStepPreference === 'example' && (
+          <div className="p-5 sm:p-6 bg-white dark:bg-[#0b1120] rounded-[14px] border border-blue-500/30 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5 uppercase tracking-wider">
+                <BookOpen className="w-4 h-4" />
+                <span>See Another Example Breakdown</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setNextStepPreference('unselected')}
+                className="text-xs text-[#64748b] hover:text-[#0f172a] dark:hover:text-[#f8fafc] underline"
+              >
+                Change choice
+              </button>
+            </div>
+
+            <p className="text-xs text-[#64748b] dark:text-[#94a3b8]">
+              Select whether you want Professor SolvAm to break down a fresh twin variation of this problem or jump to another WAEC syllabus topic:
+            </p>
+
+            <div className="space-y-2.5">
+              {/* Option 1: Break down a twin variation */}
+              <button
+                type="button"
+                onClick={handleBreakdownTwinExample}
+                disabled={isGeneratingTwin}
+                className="w-full text-left p-3.5 rounded-[10px] bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 hover:border-blue-400 transition flex items-center justify-between gap-3 group"
+              >
+                <div>
+                  <div className="text-xs font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>Break down a similar twin variation ({solution.topic || 'Same Topic'})</span>
+                  </div>
+                  <p className="text-[11px] text-[#64748b] dark:text-[#94a3b8] mt-0.5">
+                    Generates a brand new problem of this type and walks you through each step.
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+              </button>
+
+              {/* Option 2: Curated WAEC Syllabus Examples */}
+              <div className="pt-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] dark:text-[#64748b] block mb-2">
+                  Or pick from core syllabus examples:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {CURATED_NEXT_EXAMPLES.map((ex, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => onSeeAnotherExample?.(ex.equation)}
+                      className="text-left p-2.5 rounded-[8px] bg-[#f8fafc] dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] hover:border-[#2563eb] hover:bg-white dark:hover:bg-[#131d31] transition text-xs flex items-center justify-between group"
+                    >
+                      <div>
+                        <span className="font-semibold text-[#0f172a] dark:text-[#f8fafc] block">{ex.title}</span>
+                        <span className="text-[11px] font-mono text-[#64748b] dark:text-[#94a3b8]">{ex.equation}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#2563eb] transition flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Concept Diagram Modal (Meta Muse Image) */}
       <MathematicalDiagramRenderer

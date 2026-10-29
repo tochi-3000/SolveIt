@@ -323,8 +323,40 @@ def verify_steps_sequence(original_problem: str, steps: List[str], solve_for: st
 def generate_parametric_twin(equation: str, topic: str = "Quadratic Equations") -> Dict[str, Any]:
     """Generates a twin practice problem with clean integer roots guaranteed.
     
-    Production Safeguard: Prevents degenerate problems or messy decimal roots.
+    Production Safeguard: Prevents degenerate problems, division-by-zero, or messy decimal roots.
+    Supports Quadratic, Calculus Differentiation, and Arithmetic Progression topics.
     """
+    normalized = f"{equation} {topic}".lower()
+
+    # Calculus Differentiation Support
+    if any(k in normalized for k in ["dy/dx", "d/dx", "differentiat", "calculus", "derivative"]):
+        c_coeffs = [
+            (2, -6, 4, -5),
+            (3, -4, 5, -8),
+            (4, 2, -7, 3),
+            (1, -5, 3, -9)
+        ]
+        a, b, c, d = random.choice(c_coeffs)
+        poly_str = f"y = {a}*x**4 + {b}*x**2 + {c}*x + {d}"
+        latex_str = f"y = {a}x^4 {b:+d}x^2 {c:+d}x {d:+d}".replace("+ -", "- ")
+        ans_latex = f"\\frac{{dy}}{{dx}} = {4*a}x^3 {2*b:+d}x {c:+d}".replace("+ -", "- ")
+        steps = [
+            "Apply the power rule \\frac{d}{dx}[a x^n] = n \\cdot a x^{n-1} to each polynomial term.",
+            f"\\frac{{d}}{{dx}}[{a}x^4] = {4*a}x^3",
+            f"\\frac{{d}}{{dx}}[{b}x^2] = {2*b}x",
+            f"\\frac{{d}}{{dx}}[{c}x] = {c} \\quad \\text{{and}} \\quad \\frac{{d}}{{dx}}[{d}] = 0",
+            f"Combine all evaluated terms: \\frac{{dy}}{{dx}} = {4*a}x^3 {2*b:+d}x {c:+d}".replace("+ -", "- ")
+        ]
+        return {
+            "success": True,
+            "original_equation": equation,
+            "twin_equation": poly_str,
+            "twin_equation_latex": latex_str,
+            "correct_answer_latex": ans_latex,
+            "solution_steps": steps,
+            "parameters": {"a": a, "b": b, "c": c, "d": d, "type": "calculus"}
+        }
+
     x = sp.Symbol('x')
 
     # Generate random integer roots r1, r2 between -8 and 8 (excluding 0)
