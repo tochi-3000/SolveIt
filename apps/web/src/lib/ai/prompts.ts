@@ -27,15 +27,15 @@ Return ONLY valid JSON with this exact structure:
   "topic": "string (e.g. Quadratic Equations)",
   "extractedLatex": "string (clean LaTeX of the problem, e.g. x^2 - 5x + 6 = 0)",
   "confidence": 0.98,
-  "discriminantSummary": "string (1 simple sentence summarizing the method and final answer, e.g. 'To solve x² - 5x + 6 = 0, we can find its roots by factoring. Both factors show that the solutions are x = 2 and x = 3.')",
+  "discriminantSummary": "string (1 simple sentence summarizing the method and final answer, wrapping inline formulas in $...$, e.g. 'To solve $x^2 - 5x + 6 = 0$, we can find its roots by factoring. Both factors show that the solutions are $x = 2$ and $x = 3$.')",
   "steps": [
     {
       "stepNumber": 1,
-      "explanation": "string (clear, simple instruction, e.g. 'Find two numbers that multiply to the constant term (+6) and add up to the middle coefficient (-5). The numbers are -2 and -3, since (-2) × (-3) = 6 and (-2) + (-3) = -5.')",
-      "mathLatex": "string (clean LaTeX milestone, e.g. '(-2) \\times (-3) = 6 \\quad \\text{and} \\quad (-2) + (-3) = -5')",
+      "explanation": "string (clear, simple instruction with inline math wrapped in $...$, e.g. 'Find two numbers that multiply to the constant term $+6$ and add up to the middle coefficient $-5$. The numbers are $-2$ and $-3$, since $(-2) \\times (-3) = 6$ and $(-2) + (-3) = -5$.')",
+      "mathLatex": "string (clean LaTeX milestone without outer $ delimiters, e.g. '(-2) \\times (-3) = 6 \\quad \\text{and} \\quad (-2) + (-3) = -5')",
       "waecMark": "M1",
-      "commonPitfall": "string (accurate tip for this specific step)",
-      "audioNarration": "string (plain spoken English / Pidgin for text-to-speech)"
+      "commonPitfall": "string (accurate tip for this specific step, wrapping any inline math in $...$)",
+      "audioNarration": "string (plain spoken English / Pidgin for text-to-speech, with no $ or LaTeX backslashes)"
     }
   ],
   "finalAnswerLatex": "string (e.g. x = 2 \\quad \\text{or} \\quad x = 3)"

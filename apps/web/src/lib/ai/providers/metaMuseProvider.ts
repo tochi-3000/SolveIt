@@ -284,16 +284,16 @@ export class MetaMuseProvider implements IMathVisionProvider {
     let step1Explanation = '';
     if (level === 'beginner') {
       step1Explanation = isPidgin
-        ? `🟢 Foundation Step (Balogun Market Style): Imagine say you dey Balogun market to trade items. We need two numbers wey go multiply give ${acNum} and balance with ${bNum}. The two numbers na ${factorP} and ${factorQ}.`
-        : `🟢 Foundation Step (Market Trading Analogy): Imagine you are trading at the market with ₦${Math.abs(acNum)} balance. We find two friendly factor numbers that multiply to ${acNum} and add up to ${bNum}. The numbers are ${factorP} and ${factorQ}.`;
+        ? `🟢 Foundation Step (Balogun Market Style): Imagine say you dey Balogun market to trade items. We need two numbers wey go multiply give $${acNum}$ and balance with $${bNum}$. The two numbers na $${factorP}$ and $${factorQ}$.`
+        : `🟢 Foundation Step (Market Trading Analogy): Imagine you are trading at the market with ₦${Math.abs(acNum)} balance. We find two friendly factor numbers that multiply to $${acNum}$ and add up to $${bNum}$. The numbers are $${factorP}$ and $${factorQ}$.`;
     } else if (level === 'expert') {
       step1Explanation = isPidgin
-        ? `🔴 Distinction Speed-Run [Target <= 3 mins]: Mentally spot the factor pair for ac = ${acNum} and b = ${bNum} (${factorP}, ${factorQ}) without writing unnecessary scratch work.`
-        : `🔴 Distinction Socratic Pace [Target <= 3 mins]: Mentally compute the factor pair for ac = ${acNum} and b = ${bNum}. The optimal factors are ${factorP} and ${factorQ}. Proceed to grouping to save examination minutes.`;
+        ? `🔴 Distinction Speed-Run [Target <= 3 mins]: Mentally spot the factor pair for $ac = ${acNum}$ and $b = ${bNum}$ ($${factorP}, ${factorQ}$) without writing unnecessary scratch work.`
+        : `🔴 Distinction Socratic Pace [Target <= 3 mins]: Mentally compute the factor pair for $ac = ${acNum}$ and $b = ${bNum}$. The optimal factors are $${factorP}$ and $${factorQ}$. Proceed to grouping to save examination minutes.`;
     } else {
       step1Explanation = isPidgin
-        ? `🟡 [M1 Method Mark] WAEC Standard: Multiply first and last numbers (${aNum} × ${cNum} = ${acNum}). Find two numbers wey multiply give ${acNum} and add give ${bNum}: ${factorP} and ${factorQ}.`
-        : `🟡 [M1 Method Mark] Standard WAEC Procedure: Identify a = ${aNum}, b = ${bNum}, c = ${cNum}. Product ac = ${acNum}. Find factor pair summing to b (${bNum}): ${factorP} and ${factorQ}.`;
+        ? `🟡 [M1 Method Mark] WAEC Standard: Multiply first and last numbers ($${aNum} \\times ${cNum} = ${acNum}$). Find two numbers wey multiply give $${acNum}$ and add give $${bNum}$: $${factorP}$ and $${factorQ}$.`
+        : `🟡 [M1 Method Mark] Standard WAEC Procedure: Identify $a = ${aNum}$, $b = ${bNum}$, $c = ${cNum}$. Product $ac = ${acNum}$. Find factor pair summing to $b = ${bNum}$: $${factorP}$ and $${factorQ}$.`;
     }
 
     const step1Math =
@@ -303,8 +303,8 @@ export class MetaMuseProvider implements IMathVisionProvider {
 
     const step1Pitfall =
       factorP !== null && factorQ !== null
-        ? `Watch the signs carefully: ${fmtParen(factorP)} + ${fmtParen(factorQ)} must equal ${bNum}, not ${-bNum}.`
-        : `Make sure all terms are on the left side (= 0) before picking a, b, and c.`;
+        ? `Watch the signs carefully: $${fmtParen(factorP)} + ${fmtParen(factorQ)} = ${bNum}$, not $${-bNum}$.`
+        : `Make sure all terms are on the left side ($= 0$) before picking $a$, $b$, and $c$.`;
 
     // Build zero-product step (e.g., x - 2 = 0 => x = 2)
     let step3Math = finalRoots;
@@ -334,8 +334,8 @@ export class MetaMuseProvider implements IMathVisionProvider {
             {
               stepNumber: 2,
               explanation: isPidgin
-                ? `Split the middle term (${fmtSigned(bNum)}x) using ${fmtSigned(factorP)}x and ${fmtSigned(factorQ)}x, then factorize by grouping:`
-                : `Split the middle term (${fmtSigned(bNum)}x) into ${fmtSigned(factorP)}x and ${fmtSigned(factorQ)}x, then rewrite in factored form:`,
+                ? `Split the middle term ($${fmtSigned(bNum)}x$) using $${fmtSigned(factorP)}x$ and $${fmtSigned(factorQ)}x$, then factorize by grouping:`
+                : `Split the middle term ($${fmtSigned(bNum)}x$) into $${fmtSigned(factorP)}x$ and $${fmtSigned(factorQ)}x$, then rewrite in factored form:`,
               mathLatex: `${aNum}x^2 ${factorP >= 0 ? `+ ${factorP}x` : `- ${Math.abs(factorP)}x`} ${factorQ >= 0 ? `+ ${factorQ}x` : `- ${Math.abs(factorQ)}x`} ${cNum >= 0 ? `+ ${cNum}` : `- ${Math.abs(cNum)}`} = 0 \\implies ${cleanFactored}`,
               waecMark: 'M1' as const,
               commonPitfall: `Factor out the correct sign from the second pair so both brackets match.`,
@@ -344,11 +344,11 @@ export class MetaMuseProvider implements IMathVisionProvider {
             {
               stepNumber: 3,
               explanation: isPidgin
-                ? `Set each bracket to zero to solve for x:`
-                : `Set each factor to zero and solve for x to earn the final Accuracy Mark [A1]:`,
+                ? `Set each bracket to zero to solve for $x$:`
+                : `Set each factor to zero and solve for $x$ to earn the final Accuracy Mark [A1]:`,
               mathLatex: step3Math,
               waecMark: 'A1' as const,
-              commonPitfall: `Remember that when moving a number across the '=' sign, its sign flips.`,
+              commonPitfall: `Remember that when moving a number across the $=$ sign, its sign flips.`,
               audioNarration: `Set each factor to zero to get the final answer.`,
             },
           ]
@@ -376,18 +376,18 @@ export class MetaMuseProvider implements IMathVisionProvider {
             {
               stepNumber: 3,
               explanation: isPidgin
-                ? `Set each bracket to zero to find the values of x:`
-                : `Set each factor to zero to solve for x:`,
+                ? `Set each bracket to zero to find the values of $x$:`
+                : `Set each factor to zero to solve for $x$:`,
               mathLatex: step3Math,
               waecMark: 'A1' as const,
-              commonPitfall: `When solving x - a = 0, the sign flips to x = +a.`,
+              commonPitfall: `When solving $x - a = 0$, the sign flips to $x = +a$.`,
               audioNarration: `Set each factor to zero to solve for x.`,
             },
           ];
 
     const summaryText =
       rootsList.length >= 2
-        ? `To solve ${rawTarget}, we can find its roots by factoring. Setting each factor to zero shows that the solutions are x = ${rootsList.join(' and x = ')}.`
+        ? `To solve $${symbolicProof.latex_equation || rawTarget}$, we can find its roots by factoring. Setting each factor to zero shows that the solutions are $x = ${rootsList.join('$ and $x = ')}$.`
         : `Solved deterministically using SymPy algebraic verification.`;
 
     const solution = {

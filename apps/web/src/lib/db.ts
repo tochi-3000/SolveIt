@@ -96,6 +96,8 @@ export async function initDb(): Promise<void> {
 
 // ---------------------------------------------------------------------------
 // Camera Session Helpers (For Desktop-to-Mobile Realtime QR Sync)
+// Uses an in-memory globalThis cache as primary store so LAN phone-to-laptop
+// beaming completes in <2ms even when internet/Turso Cloud is slow or offline.
 // ---------------------------------------------------------------------------
 
 export interface CameraSessionRecord {
@@ -106,42 +108,97 @@ export interface CameraSessionRecord {
   expires_at?: string | null;
 }
 
+const globalForSessions = globalThis as unknown as {
+  __solvamCameraSessions?: Map<string, CameraSessionRecord>;
+};
+
+function getMemorySessionStore(): Map<string, CameraSessionRecord> {
+  if (!globalForSessions.__solvamCameraSessions) {
+    globalForSessions.__solvamCameraSessions = new Map<string, CameraSessionRecord>();
+  }
+  return globalForSessions.__solvamCameraSessions;
+}
+
+/**
+ * Executes a DB operation with a strict 3.5-second timeout so a slow remote Turso link
+ * never stalls real-time LAN operations.
+ */
+async function executeWithTimeout<T>(operation: () => Promise<T>, timeoutMs = 3500): Promise<T> {
+  return Promise.race([
+    operation(),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`DB operation timed out after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
+}
+
 export async function createCameraSession(sessionId: string): Promise<CameraSessionRecord> {
-  await initDb();
-  const db = getDb();
+  const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins
 
-  await db.execute({
-    sql: `INSERT INTO camera_sessions (id, status, expires_at) VALUES (?, 'pending', ?)`,
-    args: [sessionId, expiresAt],
-  });
-
-  return {
+  const record: CameraSessionRecord = {
     id: sessionId,
     status: 'pending',
-    created_at: new Date().toISOString(),
+    image_data: null,
+    created_at: now,
     expires_at: expiresAt,
   };
+
+  // 1. Store immediately in memory for instant LAN access
+  getMemorySessionStore().set(sessionId, record);
+
+  // 2. Persist asynchronously to DB with timeout guard
+  try {
+    await executeWithTimeout(async () => {
+      await initDb();
+      const db = getDb();
+      await db.execute({
+        sql: `INSERT INTO camera_sessions (id, status, expires_at) VALUES (?, 'pending', ?)`,
+        args: [sessionId, expiresAt],
+      });
+    });
+  } catch (err) {
+    console.warn('[DB] Camera session persisted in memory (DB write skipped/timed out):', err);
+  }
+
+  return record;
 }
 
 export async function getCameraSession(sessionId: string): Promise<CameraSessionRecord | null> {
-  await initDb();
-  const db = getDb();
-  const res = await db.execute({
-    sql: `SELECT id, status, image_data, created_at, expires_at FROM camera_sessions WHERE id = ?`,
-    args: [sessionId],
-  });
+  // 1. Fast-path: Check in-memory store first (<1ms latency for SSE & polling)
+  const memStore = getMemorySessionStore();
+  const cached = memStore.get(sessionId);
+  if (cached) {
+    return cached;
+  }
 
-  if (res.rows.length === 0) return null;
-  const row = res.rows[0];
+  // 2. Fallback to DB if not in memory
+  try {
+    return await executeWithTimeout(async () => {
+      await initDb();
+      const db = getDb();
+      const res = await db.execute({
+        sql: `SELECT id, status, image_data, created_at, expires_at FROM camera_sessions WHERE id = ?`,
+        args: [sessionId],
+      });
 
-  return {
-    id: row.id as string,
-    status: row.status as any,
-    image_data: (row.image_data as string) || null,
-    created_at: row.created_at as string,
-    expires_at: (row.expires_at as string) || null,
-  };
+      if (res.rows.length === 0) return null;
+      const row = res.rows[0];
+
+      const record: CameraSessionRecord = {
+        id: row.id as string,
+        status: row.status as any,
+        image_data: (row.image_data as string) || null,
+        created_at: row.created_at as string,
+        expires_at: (row.expires_at as string) || null,
+      };
+      memStore.set(sessionId, record);
+      return record;
+    });
+  } catch (err) {
+    console.warn('[DB] getCameraSession DB lookup timed out:', err);
+    return null;
+  }
 }
 
 export async function updateCameraSessionStatus(
@@ -149,20 +206,43 @@ export async function updateCameraSessionStatus(
   status: 'connected' | 'completed' | 'expired',
   imageData?: string
 ): Promise<void> {
-  await initDb();
-  const db = getDb();
+  const memStore = getMemorySessionStore();
+  const existing = memStore.get(sessionId) || {
+    id: sessionId,
+    status: 'pending',
+    image_data: null,
+    created_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+  };
 
-  if (imageData) {
-    await db.execute({
-      sql: `UPDATE camera_sessions SET status = ?, image_data = ? WHERE id = ?`,
-      args: [status, imageData, sessionId],
-    });
-  } else {
-    await db.execute({
-      sql: `UPDATE camera_sessions SET status = ? WHERE id = ?`,
-      args: [status, sessionId],
-    });
-  }
+  const updated: CameraSessionRecord = {
+    ...existing,
+    status,
+    image_data: imageData !== undefined ? imageData : existing.image_data,
+  };
+
+  // 1. Update memory store synchronously so desktop SSE stream receives the photo in <1ms!
+  memStore.set(sessionId, updated);
+
+  // 2. Persist to DB in the background (non-blocking so large base64 uploads never hang the phone)
+  void executeWithTimeout(async () => {
+    await initDb();
+    const db = getDb();
+
+    if (imageData) {
+      await db.execute({
+        sql: `UPDATE camera_sessions SET status = ?, image_data = ? WHERE id = ?`,
+        args: [status, imageData, sessionId],
+      });
+    } else {
+      await db.execute({
+        sql: `UPDATE camera_sessions SET status = ? WHERE id = ?`,
+        args: [status, sessionId],
+      });
+    }
+  }).catch((err) => {
+    console.warn('[DB] Non-blocking camera session DB sync skipped:', err instanceof Error ? err.message : err);
+  });
 }
 
 // ---------------------------------------------------------------------------

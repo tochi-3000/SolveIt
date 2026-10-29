@@ -13,15 +13,24 @@
 
 ---
 
+## 🦸‍♂️ What Makes SolvAm Different: Our Superpower
+
+> **The reality is that any LLM can solve a math problem and spit out a final answer. What makes SolvAm different is our superpower:**
+>
+> **We break every math problem down line-by-line into zero-skipped-step micro-derivations, and give students the option to ask questions (by voice or text) on *every single line*.**
+
+When a student gets stuck on **Step 2** (for example, *"How did we get $a$ and $c$?"* or *"Why did the signs invert when factoring this bracket?"*), they don't have to restart a generic chat prompt or guess what happened between lines. They simply click the **Voice / Ask Professor SolvAm** button attached to that exact step, ask their question aloud or in text, and receive a targeted pedagogical explanation—complete with synchronized word-for-word voice narration and official WAEC marking rubric (`[M1]` / `[A1]`) insights.
+
+---
+
 ## ⚡ 1-Minute Hackathon Judge Quickstart
 
-If you are evaluating SolvAm for the **Meta Global AI Developer Hackathon 2026**, use our top-bar **1-Click Judge Mode**:
+If you are evaluating SolvAm for the **Meta Global AI Developer Hackathon 2026**, open the dedicated **Judge Mode** page from the left sidebar (or use the top quickstart bar):
 
-1. Open `http://localhost:3000` (or the deployed live URL).
-2. **Sample 1 (SAM 3.1 Exam Scanner):** Click to isolate 4 individual questions on an authentic 2024 WASSCE Theory paper with pulsing polygon masks and bounding boxes.
-3. **Sample 2 (Geometry & Pidgin Audio):** Click to trigger the full Muse Spark tool loop on a circle sector ($r=7\text{ cm}, \theta=60^\circ$) with an SVG geometry diagram and bilingual spoken voice tutor (English / Nigerian Pidgin 🇳🇬).
-4. **Sample 3 (Red-Pen Handwritten Grader):** Click to inspect authentic student notebook working in blue Bic ink. Watch SolvAm award partial Method Marks (`M1`) on Line 1, locate the sign mistake on Line 2 (`-6x - x = -7x`), and generate a fresh twin problem for paper practice.
-5. **Architecture HUD:** Click **"Open Architecture & Telemetry HUD"** to view real-time latency breakdowns and test ANY equation on the live SymPy CAS Scratchpad.
+1. Open `http://localhost:3000` (or the deployed live URL) and navigate to **Learn**, **Practice**, or **Judge Mode** in the sidebar.
+2. **Learn (Line-by-Line Interactive Breakdown):** Pick any curated example (or type/scan your own equation), click **Explain Step-by-Step**, listen to synchronized **Read Aloud** narration, and click the microphone button on **any individual step** to ask **Professor SolvAm** a question about that exact line.
+3. **Practice (Active Mastery & Red-Pen Grader):** Practice solving equations step-by-step with instant line-by-line symbolic verification, generate fresh parametric twins, or grade handwritten notebook work with `[M1]` / `[A1]` WAEC diagnostic badges.
+4. **Judge Mode (All-in-One Evaluation Hub):** One-click access to all 3 live demo scenarios (SAM 3.1 Exam Scanner, Circle Sector Geometry + Bilingual Audio, and Red-Pen Handwritten Grader) plus the live Python SymPy CAS Scratchpad and Telemetry HUD.
 
 ---
 
@@ -231,20 +240,23 @@ npm run dev
 ## 📱 Mobile QR Camera Pairing
 
 1. Open `http://localhost:3000` on your desktop browser.
-2. Click **"Scan with Phone (QR)"** in the top navigation bar.
-3. SolvAm auto-detects your laptop's local LAN IPv4 address (e.g. `http://192.168.x.x:3000/capture?session=...`) and encodes it in the QR code.
-4. Point your phone camera at the QR code, snap your handwritten problem, and watch it stream to your desktop in real-time via Native Server-Sent Events (SSE).
+2. **Important (Same Network Required):** Ensure both your laptop and smartphone are connected to the **exact same Wi-Fi network or mobile hotspot** so your phone can reach your desktop over local LAN.
+3. Click **"Scan"** (or **"Scan with Phone (QR)"**) in the top navigation bar.
+4. SolvAm auto-detects your laptop's local LAN IPv4 address (e.g. `http://192.168.x.x:3000/capture?session=...`) and encodes it in the QR code.
+5. Point your phone camera at the QR code, snap your handwritten problem, and watch it stream to your desktop in `< 2ms` via our in-memory LAN Session Cache and Native Server-Sent Events (SSE).
 
 ---
 
 ## 🛡️ Production Safeguards Implemented
 
+* **Line-by-Line Interactive Step Q&A ("Ask Professor SolvAm"):** Every individual derivation step includes a dedicated voice & text inquiry modal bound to that exact step's algebraic context.
+* **Single-Source-of-Truth Voice & Text Synchronization:** Spoken audio (`Read Aloud` and `Ask Professor SolvAm`) reads the exact on-screen pedagogical explanation and equations through an AST-aware phonetic normalizer (`mathSpeechNormalizer.ts`), protecting hyphenated English words (`step-by-step`) and disambiguating unary negative numbers (`-6`) from subtraction.
+* **In-Memory LAN Camera Session Cache & Timeout Circuit Breaker:** Mobile QR camera uploads write to an in-memory `globalThis` LAN session store before attempting a `3.5s` time-bounded Turso sync, preventing large base64 payloads from hanging on mobile uploads.
 * **Deterministic CAS Guard:** Input expressions run through an AST whitelist filter preventing code injection or unsafe Python evaluations.
 * **Zero-Hallucination Constraint:** Equivalence verification uses `sp.simplify(step - reference) == 0`. The LLM is strictly decoupled from raw arithmetic.
 * **Auto Offline Failover:** The database client catches remote network dropouts and automatically falls back to local SQLite without crashing user sessions.
 * **Non-Blocking Auth:** Validates Clerk key formats before mounting `<ClerkProvider>` to prevent server-side hydration panics in offline mode.
 * **Atomic Server-Verified Credits:** SolvAm deducts credits on the server *after* a successful calculation, preventing race conditions.
-* **Bilingual LaTeX Phonetic Normalization:** Cleans raw LaTeX math before Web Speech API or TTS synthesis so formulas sound natural in English and Nigerian Pidgin.
 
 ---
 

@@ -75,21 +75,22 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
 
-/* KaTeX typography & spacing overrides for generous breathing room in Light & Dark modes */
+/* KaTeX typography & spacing overrides — inherit parent text color so dark modals & light cards both render crisply */
 .katex {
-  font-size: 1.18em !important;
-  color: #0f172a;
+  font-size: 1.05em;
+  color: inherit !important;
 }
 
-html.dark .katex {
-  color: #f8fafc;
+.katex-display > .katex {
+  font-size: 1.18em !important;
+  color: inherit !important;
 }
 
 .katex-display {
-  margin: 1em 0 !important;
+  margin: 0.75em 0 !important;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 6px 0;
+  padding: 4px 0;
 }
 
 @keyframes fadeIn {

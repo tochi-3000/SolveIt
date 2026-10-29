@@ -13,8 +13,6 @@ import {
   Mic,
   Eye,
   EyeOff,
-  Layers,
-  Globe2,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -28,9 +26,9 @@ import {
 interface ScaffoldingSolutionViewProps {
   solution: PedagogicalSolution;
   pedagogicalLevel: PedagogicalLevel;
-  onChangePedagogicalLevel: (level: PedagogicalLevel) => void;
+  onChangePedagogicalLevel?: (level: PedagogicalLevel) => void;
   languageMode: LanguageMode;
-  onChangeLanguageMode: (mode: LanguageMode) => void;
+  onChangeLanguageMode?: (mode: LanguageMode) => void;
   speechRate?: number;
   showExaminerWarnings?: boolean;
   onSolveTwin?: (twinEquation: string) => void;
@@ -93,7 +91,8 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
     }
 
     stopCurrentAudio();
-    const narrationText = step.audioNarration || `${step.explanation}. ${step.mathLatex}`;
+    // Always read the exact step explanation & equation displayed on the screen so voice and text match 100%
+    const narrationText = `${step.explanation} ${step.mathLatex}`;
 
     const cancel = playSpokenMath(narrationText, {
       rate: speechRate,
@@ -113,9 +112,12 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
     }
 
     stopCurrentAudio();
-    const fullScript = solution.steps
-      .map((st) => `Step ${st.stepNumber}: ${st.audioNarration || st.explanation}`)
+    // Read the exact summary, step explanations, step equations, and final solution shown on screen
+    const summaryPrefix = solution.discriminantSummary ? `${solution.discriminantSummary} ` : '';
+    const stepsScript = solution.steps
+      .map((st) => `Step ${st.stepNumber}: ${st.explanation} ${st.mathLatex}`)
       .join('. ');
+    const fullScript = `${summaryPrefix}${stepsScript}. Verified Solution: ${solution.finalAnswerLatex}`;
 
     const cancel = playSpokenMath(fullScript, {
       rate: speechRate,
@@ -153,9 +155,13 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
           <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
             {solution.topic}
           </h2>
-          <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]">
-            {solution.discriminantSummary || 'Zero-hallucination solution verified by deterministic SymPy CAS.'}
-          </p>
+          <MathDisplay
+            value={
+              solution.discriminantSummary ||
+              'Zero-hallucination solution verified by deterministic SymPy CAS.'
+            }
+            className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]"
+          />
         </div>
 
         {/* Right Action Widgets */}
@@ -202,89 +208,6 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
               value={solution.finalAnswerLatex}
               className="text-[#0f172a] dark:text-[#f8fafc] font-bold text-lg mt-1"
             />
-          </div>
-        </div>
-      </div>
-
-      {/* Scaffolding & Dialect Switcher Bar */}
-      <div className="bg-white/80 dark:bg-[#0b1120]/80 border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-3.5 flex flex-wrap items-center justify-between gap-4">
-        {/* Scaffolding Selector */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase tracking-wider flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-            <span>Scaffolding:</span>
-          </span>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => onChangePedagogicalLevel('beginner')}
-              className={`px-3 py-1.5 rounded-[8px] text-xs font-semibold transition flex items-center gap-1.5 ${
-                pedagogicalLevel === 'beginner'
-                  ? 'bg-[#2563eb] text-white shadow-sm'
-                  : 'bg-[#f1f5f9] dark:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>🟢 Foundation</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onChangePedagogicalLevel('intermediate')}
-              className={`px-3 py-1.5 rounded-[8px] text-xs font-semibold transition flex items-center gap-1.5 ${
-                pedagogicalLevel === 'intermediate'
-                  ? 'bg-[#2563eb] text-white shadow-sm'
-                  : 'bg-[#f1f5f9] dark:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>🟡 SSCE Prep</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onChangePedagogicalLevel('expert')}
-              className={`px-3 py-1.5 rounded-[8px] text-xs font-semibold transition flex items-center gap-1.5 ${
-                pedagogicalLevel === 'expert'
-                  ? 'bg-[#2563eb] text-white shadow-sm'
-                  : 'bg-[#f1f5f9] dark:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-purple-400" />
-              <span>🔴 Distinction</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Dialect Selector */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase tracking-wider flex items-center gap-1.5">
-            <Globe2 className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-            <span>Dialect:</span>
-          </span>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => onChangeLanguageMode('standard')}
-              className={`px-3 py-1 rounded-[8px] text-xs font-semibold transition ${
-                languageMode === 'standard'
-                  ? 'bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] font-bold'
-                  : 'bg-[#f1f5f9] dark:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-              }`}
-            >
-              Standard English
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeLanguageMode('pidgin')}
-              className={`px-3 py-1 rounded-[8px] text-xs font-semibold transition ${
-                languageMode === 'pidgin'
-                  ? 'bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] font-bold'
-                  : 'bg-[#f1f5f9] dark:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-              }`}
-            >
-              Nigerian Pidgin 🇳🇬
-            </button>
           </div>
         </div>
       </div>
@@ -345,9 +268,10 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                     {formattedStep}
                   </span>
                   <div>
-                    <p className="text-sm font-medium text-[#0f172a] dark:text-[#f8fafc] leading-[1.6]">
-                      {st.explanation}
-                    </p>
+                    <MathDisplay
+                      value={st.explanation}
+                      className="text-sm font-medium text-[#0f172a] dark:text-[#f8fafc] leading-[1.6]"
+                    />
                     <span className="text-[11px] text-[#64748b] dark:text-[#94a3b8] font-medium block mt-0.5">
                       {st.waecMark === 'M1'
                         ? 'Method Mark — Procedural algebra step'
@@ -430,7 +354,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                     <strong className="font-semibold text-[#0f172a] dark:text-[#f8fafc]">
                       WAEC Examiner&apos;s Note:
                     </strong>{' '}
-                    {st.commonPitfall}
+                    <MathDisplay value={st.commonPitfall} inline />
                   </span>
                 </div>
               )}
@@ -479,7 +403,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                   }
                   className="px-3 py-1.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/70 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd] flex items-center gap-1 transition"
                 >
-                  <span>Open in Solver</span>
+                  <span>Practice This Problem</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               )}

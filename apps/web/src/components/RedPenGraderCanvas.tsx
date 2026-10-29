@@ -245,8 +245,8 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
                       >
                         L{l.lineIndex}
                       </span>
-                      <span className="font-mono text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] line-clamp-1">
-                        {l.rawText}
+                      <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] line-clamp-1">
+                        <MathDisplay value={l.latex || l.rawText} inline />
                       </span>
                     </div>
 
@@ -319,12 +319,15 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
                   />
                 </div>
 
-                <p className="text-xs text-[#0f172a] dark:text-[#f8fafc] leading-[1.6]">
-                  {selectedLine.feedback ||
+                <MathDisplay
+                  value={
+                    selectedLine.feedback ||
                     (selectedLine.isMathematicallyValid
                       ? 'Step is mathematically equivalent to preceding line. Method mark retained.'
-                      : 'Step violates mathematical equivalence.')}
-                </p>
+                      : 'Step violates mathematical equivalence.')
+                  }
+                  className="text-xs text-[#0f172a] dark:text-[#f8fafc] leading-[1.6]"
+                />
               </div>
             )}
           </div>
@@ -333,7 +336,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
           <div className="p-4 bg-white dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] space-y-3">
             <div className="flex items-start gap-2 text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
               <Info className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa] flex-shrink-0 mt-0.5" />
-              <span>{gradingResult.pedagogicalSummary}</span>
+              <MathDisplay value={gradingResult.pedagogicalSummary} inline />
             </div>
 
             {onSolveTwin && (

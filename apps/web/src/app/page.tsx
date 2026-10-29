@@ -7,8 +7,8 @@ import TelemetryHud from '@/components/TelemetryHud';
 import SamSegmentationCanvas from '@/components/SamSegmentationCanvas';
 import EquationVerificationModal from '@/components/EquationVerificationModal';
 import ScaffoldingSolutionView from '@/components/ScaffoldingSolutionView';
-import RedPenGraderCanvas from '@/components/RedPenGraderCanvas';
-import JudgeModeBar from '@/components/JudgeModeBar';
+import PracticeWorkspaceView from '@/components/PracticeWorkspaceView';
+import JudgeModeView from '@/components/JudgeModeView';
 import JudgeTelemetryDrawer from '@/components/JudgeTelemetryDrawer';
 import AuthProfileModal, { UserProfileData } from '@/components/AuthProfileModal';
 import { cropImageRegion } from '@/lib/image/crop';
@@ -20,16 +20,21 @@ import {
   getCorrectStudentNotebookFixture,
 } from '@/lib/fixtures/studentNotebookFixtures';
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
-import { SolveResponse, VerifyStepsResponse, SAMSegment, GradeHandwritingResponse } from '@solvam/shared-types';
-import { PedagogicalSolution, TelemetryEvent, PedagogicalLevel, LanguageMode } from '@/lib/ai/types';
 import {
-  Calculator,
-  CheckCircle2,
-  XCircle,
+  SolveResponse,
+  VerifyStepsResponse,
+  SAMSegment,
+  GradeHandwritingResponse,
+} from '@solvam/shared-types';
+import {
+  PedagogicalSolution,
+  TelemetryEvent,
+  PedagogicalLevel,
+  LanguageMode,
+} from '@/lib/ai/types';
+import {
   Sparkles,
   Award,
-  ArrowRight,
-  ShieldCheck,
   RefreshCw,
   Cpu,
   Coins,
@@ -43,18 +48,17 @@ import {
   Settings,
   Menu,
   X,
-  ChevronRight,
   Sliders,
   Check,
-  Info,
-  Plus,
   Sun,
   Moon,
   Monitor,
+  BookOpen,
+  Terminal,
+  ArrowRight,
 } from 'lucide-react';
 
-type ActiveWorkspaceView = 'scanner' | 'solver' | 'muse-spark' | 'settings';
-type SolverSubTab = 'equation-solver' | 'red-pen-verifier';
+type ActiveWorkspaceView = 'learn' | 'practice' | 'judge-mode' | 'settings';
 type ThemeMode = 'light' | 'dark' | 'system';
 
 interface AppPreferences {
@@ -79,8 +83,7 @@ const STORAGE_KEY_PREFS = 'solvam_user_preferences_v1';
 
 export default function HomePage() {
   // Navigation & Responsive Drawer State
-  const [activeView, setActiveView] = useState<ActiveWorkspaceView>('scanner');
-  const [solverSubTab, setSolverSubTab] = useState<SolverSubTab>('equation-solver');
+  const [activeView, setActiveView] = useState<ActiveWorkspaceView>('learn');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // Engine Health & Latency
@@ -94,7 +97,7 @@ export default function HomePage() {
   // QR Camera Bridge State
   const [isCameraModalOpen, setIsCameraModalOpen] = useState<boolean>(false);
 
-  // Phase 3: Meta SAM 3.1 Page Segmentation State
+  // Meta SAM 3.1 Page Segmentation State (Used when scanning/uploading into Learn or inside Judge Mode)
   const [activeExamImage, setActiveExamImage] = useState<string | null>(null);
   const [samSegments, setSamSegments] = useState<SAMSegment[]>([]);
   const [samLoading, setSamLoading] = useState<boolean>(false);
@@ -119,19 +122,19 @@ export default function HomePage() {
   );
   const [settingsSavedBanner, setSettingsSavedBanner] = useState<boolean>(false);
 
-  // Multimodal Vision + Tool-Calling State
+  // Learn Page (Meta Muse Spark 1.3 + SymPy Tool-Loop) State
   const [aiSolution, setAiSolution] = useState<PedagogicalSolution | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryEvent | null>(null);
   const [transcribeLoading, setTranscribeLoading] = useState<boolean>(false);
   const [museTestEquation, setMuseTestEquation] = useState<string>('3x^2 - 5x - 2 = 0');
 
-  // Deterministic Solver State
+  // Deterministic Solver State (For Judge Mode Benchmark)
   const [equationInput, setEquationInput] = useState<string>('3x^2 - 5x - 2 = 0');
   const [solveResult, setSolveResult] = useState<SolveResponse | null>(null);
   const [solveLoading, setSolveLoading] = useState<boolean>(false);
   const [solveLatency, setSolveLatency] = useState<number | null>(null);
 
-  // Step Verifier State
+  // Practice Page (Step Verifier & Handwritten Grader) State
   const [originalProblem, setOriginalProblem] = useState<string>('3x^2 - 5x - 2 = 0');
   const [studentSteps, setStudentSteps] = useState<string[]>([
     '3x^2 - 6x + x - 2 = 0',
@@ -141,7 +144,7 @@ export default function HomePage() {
   const [verifyResult, setVerifyResult] = useState<VerifyStepsResponse | null>(null);
   const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
 
-  // Phase 5: Red-Pen Handwritten Grader State
+  // Red-Pen Handwritten Grader State
   const [handwritingResult, setHandwritingResult] = useState<GradeHandwritingResponse>(() => {
     const fixture = getFlawedStudentNotebookFixture();
     return {
@@ -160,11 +163,9 @@ export default function HomePage() {
     };
   });
   const [handwritingLoading, setHandwritingLoading] = useState<boolean>(false);
-  const [handwritingViewMode, setHandwritingViewMode] = useState<'notebook' | 'manual-steps'>('notebook');
 
-  // Phase 6: Hackathon Judge Mode & Architecture Telemetry State
+  // Hackathon Judge Architecture Drawer State
   const [isJudgeDrawerOpen, setIsJudgeDrawerOpen] = useState<boolean>(false);
-  const [activeJudgeSample, setActiveJudgeSample] = useState<number | null>(null);
 
   // Apply theme mode to <html> element and keep resolvedDark synchronized
   const applyDomTheme = useCallback((mode: ThemeMode) => {
@@ -291,7 +292,8 @@ export default function HomePage() {
   const segmentExamImage = async (imageUri: string, sampleId?: string) => {
     setSamLoading(true);
     setActiveExamImage(imageUri);
-    setActiveView('scanner');
+    // Keep user on Judge Mode if they triggered segmentation there; otherwise open in Learn
+    setActiveView((prev) => (prev === 'judge-mode' ? 'judge-mode' : 'learn'));
     try {
       const res = await fetch('/api/math/segment', {
         method: 'POST',
@@ -316,12 +318,10 @@ export default function HomePage() {
     const fixture = getSampleWaecExamSheet();
     setActiveExamImage(fixture.svgDataUri);
     setSamSegments(fixture.segments);
-    setActiveView('scanner');
     segmentExamImage(fixture.svgDataUri, 'waec-2024-paper-2');
   };
 
   const handlePhotoReceived = async (base64Image: string) => {
-    setActiveView('scanner');
     try {
       const optimized = await optimizeImage(base64Image);
       segmentExamImage(optimized);
@@ -333,7 +333,6 @@ export default function HomePage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setActiveView('scanner');
     try {
       const optimized = await optimizeImage(file);
       segmentExamImage(optimized);
@@ -361,6 +360,7 @@ export default function HomePage() {
 
   const handleConfirmAndSolve = (verifiedEquation: string, croppedBase64: string) => {
     setIsVerificationModalOpen(false);
+    setMuseTestEquation(verifiedEquation);
     runMultimodalSolve(croppedBase64, verifiedEquation);
   };
 
@@ -440,7 +440,7 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           originalProblem,
-          steps: studentSteps,
+          steps: studentSteps.filter((s) => s.trim().length > 0),
           solveFor: 'x',
         }),
       });
@@ -531,29 +531,6 @@ export default function HomePage() {
     }
   }, []);
 
-  // Phase 6: Hackathon Judge Mode 1-Click Handlers
-  const handleTriggerJudgeSample1 = useCallback(() => {
-    setActiveJudgeSample(1);
-    navigateToView('scanner');
-    handleLoadSampleSheet();
-  }, []);
-
-  const handleTriggerJudgeSample2 = useCallback(() => {
-    setActiveJudgeSample(2);
-    const targetEq = '3x^2 - 5x - 2 = 0';
-    setMuseTestEquation(targetEq);
-    navigateToView('muse-spark');
-    runMultimodalSolve('mockBase64ImageData', targetEq, 'intermediate', 'pidgin');
-  }, [runMultimodalSolve]);
-
-  const handleTriggerJudgeSample3 = useCallback(() => {
-    setActiveJudgeSample(3);
-    setSolverSubTab('red-pen-verifier');
-    setHandwritingViewMode('notebook');
-    navigateToView('solver');
-    handleLoadHandwritingSample('flawed_student_notebook_sign_error');
-  }, [handleLoadHandwritingSample]);
-
   const getInitials = (name?: string) => {
     if (!name) return 'ST';
     const parts = name.trim().split(/\s+/);
@@ -563,7 +540,7 @@ export default function HomePage() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  // Sidebar Navigation Configuration (Items A, B, C, D)
+  // Reorganized Sidebar Navigation: Learn -> Practice -> Judge Mode -> Settings
   const navItems: Array<{
     id: ActiveWorkspaceView;
     label: string;
@@ -573,28 +550,28 @@ export default function HomePage() {
     description: string;
   }> = [
     {
-      id: 'scanner',
-      label: 'Shazam for Math',
-      headerTitle: 'Shazam for Math Exam Page Scanner',
-      badge: 'SAM 3.1',
-      icon: Scan,
-      description: 'Multi-equation WAEC exam page segmentation & visual capture',
+      id: 'learn',
+      label: 'Learn',
+      headerTitle: 'Learn with Professor SolvAm',
+      badge: 'AI Tutor',
+      icon: BookOpen,
+      description: 'Step-by-step adaptive WAEC math breakdowns, voice tutor & concept diagrams',
     },
     {
-      id: 'solver',
-      label: 'Deterministic Solver',
-      headerTitle: 'Deterministic Symbolic Solver & Step Verifier',
-      badge: 'SymPy',
-      icon: Calculator,
-      description: 'Zero-hallucination symbolic equation solver & Red-Pen step verifier',
+      id: 'practice',
+      label: 'Practice',
+      headerTitle: 'Practice & WAEC Step Grader',
+      badge: 'Drills',
+      icon: Award,
+      description: 'Practice twin problems and verify your steps line-by-line with SymPy',
     },
     {
-      id: 'muse-spark',
-      label: 'Muse Spark Tool-Loop',
-      headerTitle: 'Meta Muse Spark Tool-Loop Test',
-      badge: 'AI Loop',
-      icon: Sparkles,
-      description: 'Multimodal perception, native tool-calling & WAEC M1/A1 scaffolding',
+      id: 'judge-mode',
+      label: 'Judge Mode',
+      headerTitle: 'Hackathon Judge Evaluation Suite',
+      badge: 'Demo',
+      icon: Terminal,
+      description: 'All-in-one sandbox for SAM 3.1, Muse Spark 1.3, Red-Pen Grader & SymPy telemetry',
     },
     {
       id: 'settings',
@@ -609,11 +586,11 @@ export default function HomePage() {
   const isUserLoggedIn = Boolean(userProfile && !userProfile.is_guest);
 
   // ===========================================================================
-  // SIDEBAR CONTENT (Light Blue Brand Edition + Midnight Obsidian Dark Mode)
+  // SIDEBAR CONTENT
   // ===========================================================================
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full justify-between select-none">
-      {/* Top Section: Brand + Navigation + Quick Exam Presets */}
+      {/* Top Section: Brand + Primary Navigation + Quick Study Shortcuts */}
       <div className="space-y-6">
         {/* Brand Row */}
         <div className="flex items-center justify-between px-1">
@@ -686,61 +663,57 @@ export default function HomePage() {
           })}
         </nav>
 
-        {/* Quick Exam Presets Section */}
+        {/* Quick Topic Shortcuts */}
         <div className="pt-4 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-1.5">
           <div className="flex items-center justify-between px-3.5 pb-1">
             <span className="text-[11px] font-semibold text-[#64748b] dark:text-[#94a3b8]">
-              WAEC Quick Sheets
+              Quick Study Topics
             </span>
-            <button
-              type="button"
-              onClick={handleLoadSampleSheet}
-              className="text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
-              title="Load 2024 WAEC Exam Paper"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
           </div>
 
           <button
             type="button"
-            onClick={handleLoadSampleSheet}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[8px] text-xs font-medium text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 transition text-left"
-          >
-            <span className="w-2 h-2 rounded-full bg-[#2563eb] flex-shrink-0" />
-            <span className="truncate">WASSCE 2024 Paper 2</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => {
-              setEquationInput('3x^2 - 5x - 2 = 0');
-              setSolverSubTab('equation-solver');
-              navigateToView('solver');
-            }}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[8px] text-xs font-medium text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 transition text-left"
-          >
-            <span className="w-2 h-2 rounded-full bg-[#3b82f6] flex-shrink-0" />
-            <span className="truncate">Quadratic Factorisation</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSolverSubTab('red-pen-verifier');
-              navigateToView('solver');
+              const eq = 'x^2 + 5x + 6 = 0';
+              setMuseTestEquation(eq);
+              navigateToView('learn');
+              runMultimodalSolve('mockBase64ImageData', eq);
             }}
             className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[8px] text-xs font-medium text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 transition text-left"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-            <span className="truncate">Red-Pen Rubric Grader</span>
+            <span className="truncate">Simple Factoring (x² + 5x + 6 = 0)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const eq = '3x^2 - 5x - 2 = 0';
+              setMuseTestEquation(eq);
+              navigateToView('learn');
+              runMultimodalSolve('mockBase64ImageData', eq);
+            }}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[8px] text-xs font-medium text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 transition text-left"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#2563eb] flex-shrink-0" />
+            <span className="truncate">WAEC 2024 Q1(a) (3x² - 5x - 2 = 0)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              navigateToView('practice');
+            }}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[8px] text-xs font-medium text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 transition text-left"
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+            <span className="truncate">Practice Workbook &amp; Grader</span>
           </button>
         </div>
       </div>
 
-      {/* Bottom Section: Compact Pedagogy Status Card + Isolated Bottom Profile/Sign-In */}
+      {/* Bottom Section: Compact Pedagogy Status Card + Profile/Sign-In */}
       <div className="space-y-3 pt-4 mt-6">
-        {/* Compact Status Card */}
         <div className="p-3.5 rounded-[12px] bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#0f172a] dark:text-[#f8fafc]">
@@ -861,9 +834,7 @@ export default function HomePage() {
   );
 
   // ===========================================================================
-  // SINGLE FRAMED INNER CARD FOR AI MATH SOLVER OUTPUT
-  // ===========================================================================
-  // PHASE 4: Meta Muse Spark 1.3 Adaptive Pedagogy & Scaffolding View
+  // AI MATH SOLVER OUTPUT CARD (Connects "Learn" directly to "Practice")
   // ===========================================================================
   const renderAiSolutionCard = () => {
     if (!aiSolution) return null;
@@ -873,26 +844,36 @@ export default function HomePage() {
         pedagogicalLevel={pedagogicalLevel}
         onChangePedagogicalLevel={(lvl) => {
           setPedagogicalLevel(lvl);
-          runMultimodalSolve(aiSolution.extractedLatex, aiSolution.extractedLatex, lvl, languageMode);
+          runMultimodalSolve(
+            aiSolution.extractedLatex,
+            aiSolution.extractedLatex,
+            lvl,
+            languageMode
+          );
         }}
         languageMode={languageMode}
         onChangeLanguageMode={(lang) => {
           setLanguageMode(lang);
-          runMultimodalSolve(aiSolution.extractedLatex, aiSolution.extractedLatex, pedagogicalLevel, lang);
+          runMultimodalSolve(
+            aiSolution.extractedLatex,
+            aiSolution.extractedLatex,
+            pedagogicalLevel,
+            lang
+          );
         }}
         speechRate={speechRate}
         showExaminerWarnings={showExaminerWarnings}
         onSolveTwin={(twinEq) => {
-          setEquationInput(twinEq);
-          setActiveView('solver');
-          setSolverSubTab('equation-solver');
+          setOriginalProblem(twinEq);
+          setStudentSteps(['', '', '']);
+          setVerifyResult(null);
+          setActiveView('practice');
         }}
       />
     );
   };
 
   return (
-    /* Outermost Canvas (#f4f7fa in Light Mode / #070b14 in Dark Mode) + Centered 1440px Floating App Container */
     <div className="min-h-screen bg-[#f4f7fa] dark:bg-[#070b14] p-2 sm:p-5 lg:p-7 transition-colors">
       {/* Hidden Global File Input */}
       <input
@@ -903,11 +884,10 @@ export default function HomePage() {
         className="hidden"
       />
 
-      {/* APP CONTAINER: max-w-[1440px], rounded-[16px], 1px border, soft drop-shadow */}
+      {/* APP CONTAINER */}
       <div className="max-w-[1440px] mx-auto bg-white dark:bg-[#0f172a] rounded-[16px] border border-[#e2e8f0] dark:border-[#1e293b] shadow-app-shell overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col transition-colors">
         {/* TOP WINDOW / APPLICATION HEADER BAR */}
         <header className="bg-white dark:bg-[#0f172a] border-b border-[#e2e8f0] dark:border-[#1e293b] px-5 sm:px-8 py-3.5 flex items-center justify-between gap-4 transition-colors">
-          {/* Left: Window Dots (Desktop) / Hamburger (Mobile) + Active View Breadcrumb */}
           <div className="flex items-center gap-4 min-w-0">
             <button
               type="button"
@@ -946,9 +926,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: Theme Switcher + Desktop Top-Right Upload & Scan Controls */}
+          {/* Right: Theme Switcher + Upload & Scan Controls */}
           <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
-            {/* 1-Click Light / Dark Mode Switcher */}
             <button
               type="button"
               onClick={handleToggleTheme}
@@ -971,16 +950,6 @@ export default function HomePage() {
 
             <button
               type="button"
-              onClick={handleLoadSampleSheet}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-semibold transition"
-              title="Load Official WAEC 2024 Exam Sheet"
-            >
-              <FileText className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-              <span>Sample WAEC Paper</span>
-            </button>
-
-            <button
-              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="px-3.5 py-2 rounded-[8px] bg-white dark:bg-[#0b1120] hover:bg-[#f0f5fa] dark:hover:bg-[#1e293b] text-[#0f172a] dark:text-[#f8fafc] border border-[#e2e8f0] dark:border-[#1e293b] text-xs font-semibold transition flex items-center gap-2"
             >
@@ -999,7 +968,7 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* BODY SPLIT: Left Sidebar (#f0f5fa / #0b1120) + Right Main Content Panel (#ffffff / #0f172a) */}
+        {/* BODY SPLIT: Left Sidebar + Right Main Content Panel */}
         <div className="flex-1 flex flex-col lg:flex-row">
           {/* DESKTOP LEFT SIDEBAR */}
           <aside className="hidden lg:flex lg:w-[272px] lg:flex-shrink-0 bg-[#f0f5fa] dark:bg-[#0b1120] border-r border-[#e2e8f0] dark:border-[#1e293b] p-5 flex-col justify-between transition-colors">
@@ -1020,597 +989,70 @@ export default function HomePage() {
           )}
 
           {/* MAIN WORKSPACE CONTENT PANEL */}
-          <main className="flex-1 bg-[#ffffff] dark:bg-[#0f172a] p-8 lg:p-10 flex flex-col justify-between min-w-0 transition-colors">
-            {/* Primary Workspace Content */}
+          <main className="flex-1 bg-[#ffffff] dark:bg-[#0f172a] p-6 sm:p-8 lg:p-10 flex flex-col justify-between min-w-0 transition-colors">
             <div className="max-w-5xl w-full mx-auto space-y-8">
-              {/* Phase 6: Hackathon Judge Mode Quickbar */}
-              <JudgeModeBar
-                onSelectSample1={handleTriggerJudgeSample1}
-                onSelectSample2={handleTriggerJudgeSample2}
-                onSelectSample3={handleTriggerJudgeSample3}
-                onOpenTelemetryDrawer={() => setIsJudgeDrawerOpen(true)}
-                activeSample={activeJudgeSample}
-              />
               {/* =================================================================
-                  VIEW A: SHAZAM FOR MATH EXAM PAGE SCANNER
+                  PAGE 1: LEARN (Standalone Adaptive AI Tutor Page)
                  ================================================================= */}
-              {activeView === 'scanner' && (
+              {activeView === 'learn' && (
                 <div className="space-y-8 animate-fadeIn">
-                  {/* Top Prompt Bubble Row */}
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-end gap-3">
-                    <div className="bg-[#f0f5fa] dark:bg-[#0b1120] border border-transparent dark:border-[#1e293b] rounded-[12px] px-5 py-3.5 max-w-md text-xs text-[#0f172a] dark:text-[#f8fafc] leading-[1.6]">
-                      Can you segment a multi-problem WAEC mathematics exam paper with Meta SAM 3.1 and verify the step-by-step solution using SymPy?
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleLoadSampleSheet}
-                      className="self-end sm:self-center px-3.5 py-2 rounded-[8px] bg-white dark:bg-[#0b1120] hover:bg-[#dbeafe] dark:hover:bg-[#1e293b] text-[#1e3a8a] dark:text-[#93c5fd] border border-[#e2e8f0] dark:border-[#1e293b] text-xs font-semibold transition flex items-center gap-1.5 flex-shrink-0"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-                      <span>Load 2024 WAEC Sheet</span>
-                    </button>
-                  </div>
-
-                  {/* Editorial Intro & Vertical Numbered Steps */}
-                  <div className="space-y-5">
-                    <div className="space-y-1.5">
-                      <p className="text-sm text-[#0f172a] dark:text-[#f8fafc] font-medium leading-[1.6]">
-                        I can isolate every equation on your exam sheet using <strong>Meta SAM 3.1</strong>, verify exact algebraic roots via our deterministic <strong>Python SymPy AST engine</strong>, and grade each line against official <strong>WAEC M1/A1 marking rubrics</strong>.
-                      </p>
-                    </div>
-
+                  {/* If user scanned or uploaded an exam sheet via the top header, display SAM 3.1 segmentation here */}
+                  {activeExamImage && (
                     <div className="space-y-3">
-                      <div className="text-xs font-bold text-[#0f172a] dark:text-[#f8fafc] uppercase tracking-wider">
-                        Steps:
-                      </div>
-
-                      <div className="space-y-2.5">
-                        <div className="flex items-start sm:items-center gap-3.5">
-                          <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] font-mono text-xs font-semibold flex-shrink-0">
-                            01
-                          </span>
-                          <span className="text-xs sm:text-sm text-[#0f172a] dark:text-[#e2e8f0] leading-[1.6]">
-                            Upload an exam page photo, scan via QR Phone Lens, or load the 1-Click WASSCE 2024 Theory Sheet (auto-compressed &lt;150KB).
-                          </span>
-                        </div>
-
-                        <div className="flex items-start sm:items-center gap-3.5">
-                          <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] font-mono text-xs font-semibold flex-shrink-0">
-                            02
-                          </span>
-                          <span className="text-xs sm:text-sm text-[#0f172a] dark:text-[#e2e8f0] leading-[1.6]">
-                            Tap any highlighted SAM 3.1 equation mask on the canvas (or drag a custom region) to confirm the KaTeX formula.
-                          </span>
-                        </div>
-
-                        <div className="flex items-start sm:items-center gap-3.5">
-                          <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] font-mono text-xs font-semibold flex-shrink-0">
-                            03
-                          </span>
-                          <span className="text-xs sm:text-sm text-[#0f172a] dark:text-[#e2e8f0] leading-[1.6]">
-                            Review the zero-hallucination WAEC M1/A1 breakdown, listen to voice narration, and generate a parametric Twin Question.
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Inline Metadata Tags */}
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-[#64748b] dark:text-[#94a3b8]">
-                      <span>Active configuration:</span>
-                      <span className="px-2.5 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] font-semibold capitalize">
-                        {pedagogicalLevel} Scaffolding
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-[8px] bg-[#f0f5fa] dark:bg-[#1e293b] text-[#0f172a] dark:text-[#f8fafc] font-semibold">
-                        {languageMode === 'pidgin' ? 'Nigerian Pidgin 🇳🇬' : 'Standard English'}
-                      </span>
-                      <span>for WAEC Theory grading.</span>
-                    </div>
-                  </div>
-
-                  {/* Interactive SAM 3.1 Canvas OR Framed Dropzone Card */}
-                  {activeExamImage ? (
-                    <SamSegmentationCanvas
-                      imageUrl={activeExamImage}
-                      segments={samSegments}
-                      selectedSegmentId={selectedSegment?.id || null}
-                      onSelectSegment={handleSelectSegment}
-                      isLoading={samLoading}
-                    />
-                  ) : (
-                    <div className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-8 sm:p-10 text-center space-y-5">
-                      <div className="w-14 h-14 mx-auto rounded-[12px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#2563eb] dark:text-[#60a5fa] flex items-center justify-center">
-                        <Scan className="w-7 h-7" />
-                      </div>
-                      <div className="space-y-1.5 max-w-lg mx-auto">
-                        <h2 className="text-lg font-bold text-[#0f172a] dark:text-[#f8fafc]">
-                          Ready to Segment Your WAEC Mathematics Sheet
-                        </h2>
-                        <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
-                          Load our pre-calibrated WASSCE 2024 Mathematics Theory Paper 2 below to test multi-equation SAM 3.1 segmentation in one click, or upload your own photo.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-[#dbeafe]/60 dark:bg-[#1e3a8a]/30 rounded-[10px] border border-[#bfdbfe] dark:border-[#1e3a8a]">
+                        <span className="text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd] flex items-center gap-2">
+                          <Scan className="w-4 h-4 text-[#2563eb]" />
+                          <span>Scanned Exam Sheet Active — Tap any highlighted equation to learn its step-by-step solution</span>
+                        </span>
                         <button
                           type="button"
-                          onClick={handleLoadSampleSheet}
-                          className="px-5 py-2.5 rounded-[8px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold transition flex items-center gap-2 shadow-sm"
+                          onClick={() => setActiveExamImage(null)}
+                          className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
                         >
-                          <FileText className="w-4 h-4" />
-                          <span>1-Click WAEC 2024 Exam Sheet</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="px-4 py-2.5 rounded-[8px] bg-white dark:bg-[#0f172a] hover:bg-[#dbeafe] dark:hover:bg-[#1e293b] text-[#1e3a8a] dark:text-[#93c5fd] border border-[#e2e8f0] dark:border-[#1e293b] text-xs font-semibold transition flex items-center gap-2"
-                        >
-                          <Upload className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
-                          <span>Upload Exam Image</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setIsCameraModalOpen(true)}
-                          className="px-4 py-2.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/70 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-semibold transition flex items-center gap-2"
-                        >
-                          <Scan className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
-                          <span>Pair Phone Camera (QR)</span>
+                          Close Sheet
                         </button>
                       </div>
+                      <SamSegmentationCanvas
+                        imageUrl={activeExamImage}
+                        segments={samSegments}
+                        selectedSegmentId={selectedSegment?.id || null}
+                        onSelectSegment={handleSelectSegment}
+                        isLoading={samLoading}
+                      />
                     </div>
                   )}
 
-                  {/* Single Framed AI Math Solver Output Card */}
-                  {renderAiSolutionCard()}
-                </div>
-              )}
-
-              {/* =================================================================
-                  VIEW B: DETERMINISTIC SOLVER (Equation Solver + Red-Pen Verifier)
-                 ================================================================= */}
-              {activeView === 'solver' && (
-                <div className="space-y-6 animate-fadeIn">
-                  {/* Top Sub-Navigation Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-                    <div className="flex items-center gap-1.5 p-1 bg-[#f0f5fa] dark:bg-[#0b1120] rounded-[8px]">
-                      <button
-                        type="button"
-                        onClick={() => setSolverSubTab('equation-solver')}
-                        className={`px-4 py-2 rounded-[8px] text-xs font-semibold transition flex items-center gap-2 ${
-                          solverSubTab === 'equation-solver'
-                            ? 'bg-[#2563eb] text-white shadow-sm'
-                            : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-                        }`}
-                      >
-                        <Calculator className="w-3.5 h-3.5" />
-                        <span>Symbolic Equation Solver</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSolverSubTab('red-pen-verifier')}
-                        className={`px-4 py-2 rounded-[8px] text-xs font-semibold transition flex items-center gap-2 ${
-                          solverSubTab === 'red-pen-verifier'
-                            ? 'bg-[#2563eb] text-white shadow-sm'
-                            : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-                        }`}
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                        <span>&ldquo;Red-Pen&rdquo; Step Verifier (WAEC Rubric)</span>
-                      </button>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-mono font-semibold flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
-                      <span>Zero-Hallucination SymPy AST</span>
-                    </div>
-                  </div>
-
-                  {solverSubTab === 'equation-solver' ? (
-                    /* SUB-TAB 1: SYMBOLIC EQUATION SOLVER */
-                    <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-8 space-y-6">
-                      <div>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                          <Calculator className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-                          <span>Deterministic Symbolic Engine</span>
-                        </div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
-                          Exact Algebraic Root &amp; Discriminant Solver
-                        </h2>
-                        <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
-                          Enter any WAEC equation. Python SymPy computes exact roots, discriminants ($\Delta = b^2 - 4ac$), and algebraic milestones with 0% LLM arithmetic hallucination.
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        <div className="lg:col-span-7 space-y-4">
-                          <div>
-                            <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1.5">
-                              Mathematical Equation (LaTeX or Standard Notation)
-                            </label>
-                            <input
-                              type="text"
-                              value={equationInput}
-                              onChange={(e) => setEquationInput(e.target.value)}
-                              placeholder="e.g. 3x^2 - 5x - 2 = 0"
-                              className="w-full bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-3 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
-                            />
-                          </div>
-
-                          <div className="py-5 px-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] text-center min-h-[84px] flex flex-col items-center justify-center">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] mb-1">
-                              Live KaTeX Preview
-                            </span>
-                            <MathDisplay
-                              value={equationInput}
-                              displayMode
-                              className="text-[#0f172a] dark:text-[#f8fafc] font-bold text-lg"
-                            />
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8]">
-                              WAEC Presets:
-                            </span>
-                            {[
-                              { label: 'Quadratic (3x² - 5x - 2 = 0)', eq: '3x^2 - 5x - 2 = 0' },
-                              { label: 'Diff of Squares (x² - 16 = 0)', eq: 'x^2 - 16 = 0' },
-                              { label: 'Linear (3x - 12 = 0)', eq: '3x - 12 = 0' },
-                              { label: 'Perfect Square (x² - 6x + 9 = 0)', eq: 'x^2 - 6x + 9 = 0' },
-                            ].map((preset) => (
-                              <button
-                                key={preset.eq}
-                                type="button"
-                                onClick={() => setEquationInput(preset.eq)}
-                                className="px-3 py-1.5 bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px] text-xs font-semibold transition"
-                              >
-                                {preset.label}
-                              </button>
-                            ))}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={handleSolve}
-                            disabled={solveLoading}
-                            className="w-full py-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-xs sm:text-sm rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                          >
-                            {solveLoading ? (
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <span>Solve Deterministically with SymPy</span>
-                                <ArrowRight className="w-4 h-4" />
-                              </>
-                            )}
-                          </button>
-                        </div>
-
-                        <div className="lg:col-span-5">
-                          {solveResult ? (
-                            <div className="h-full p-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] space-y-4 flex flex-col justify-between animate-fadeIn">
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <span className="px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                                    {solveResult.topic_label}
-                                  </span>
-                                  {solveLatency !== null && (
-                                    <span className="text-xs font-mono text-[#64748b] dark:text-[#94a3b8]">
-                                      {solveLatency}ms
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="p-5 bg-[#f8fafc] dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] text-center">
-                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] mb-1">
-                                    Verified Exact Roots
-                                  </div>
-                                  <MathDisplay
-                                    value={solveResult.solution_latex}
-                                    displayMode
-                                    className="text-[#1e3a8a] dark:text-[#93c5fd] font-bold text-xl"
-                                  />
-                                </div>
-
-                                {solveResult.discriminant !== null &&
-                                  solveResult.discriminant !== undefined && (
-                                    <div className="grid grid-cols-2 gap-3 text-xs">
-                                      <div className="p-3 bg-[#f8fafc] dark:bg-[#0b1120] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b]">
-                                        <span className="text-[#64748b] dark:text-[#94a3b8] block text-[10px] uppercase font-semibold">
-                                          Discriminant (Δ)
-                                        </span>
-                                        <span className="font-mono font-bold text-base text-[#0f172a] dark:text-[#f8fafc]">
-                                          {solveResult.discriminant}
-                                        </span>
-                                      </div>
-                                      <div className="p-3 bg-[#f8fafc] dark:bg-[#0b1120] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b]">
-                                        <span className="text-[#64748b] dark:text-[#94a3b8] block text-[10px] uppercase font-semibold">
-                                          Nature of Roots
-                                        </span>
-                                        <span className="font-semibold text-[#0f172a] dark:text-[#f8fafc] block mt-0.5">
-                                          {solveResult.milestones.nature_of_roots}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  )}
-                              </div>
-
-                              <div className="pt-3 border-t border-[#e2e8f0] dark:border-[#1e293b] flex items-center justify-between text-xs text-[#64748b] dark:text-[#94a3b8]">
-                                <span>AST Guard: Verified</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setMuseTestEquation(equationInput);
-                                    setActiveView('muse-spark');
-                                  }}
-                                  className="font-semibold text-[#2563eb] dark:text-[#60a5fa] hover:underline flex items-center gap-1"
-                                >
-                                  <span>Generate Step Breakdown</span>
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="h-full min-h-[240px] p-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] flex flex-col items-center justify-center text-center">
-                              <Calculator className="w-8 h-8 text-[#2563eb] dark:text-[#60a5fa] mb-2" />
-                              <h3 className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
-                                Ready for Symbolic Computation
-                              </h3>
-                              <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-xs leading-[1.6]">
-                                Click &ldquo;Solve Deterministically with SymPy&rdquo; to compute exact roots and discriminants.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </section>
-                  ) : (
-                    /* SUB-TAB 2: RED-PEN STEP VERIFIER & VISUAL NOTEBOOK GRADER */
-                    <div className="space-y-6">
-                      {/* View Mode Switcher: Visual Notebook Canvas vs Manual Text Step Editor */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px]">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8]">
-                            Grader Workspace:
-                          </span>
-                          <div className="flex items-center p-0.5 bg-[#f0f5fa] dark:bg-[#131c2e] rounded-[8px]">
-                            <button
-                              type="button"
-                              onClick={() => setHandwritingViewMode('notebook')}
-                              className={`px-3 py-1.5 rounded-[6px] text-xs font-semibold transition flex items-center gap-1.5 ${
-                                handwritingViewMode === 'notebook'
-                                  ? 'bg-[#2563eb] text-white shadow-sm'
-                                  : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-                              }`}
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                              <span>Handwritten Notebook Canvas</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setHandwritingViewMode('manual-steps')}
-                              className={`px-3 py-1.5 rounded-[6px] text-xs font-semibold transition flex items-center gap-1.5 ${
-                                handwritingViewMode === 'manual-steps'
-                                  ? 'bg-[#2563eb] text-white shadow-sm'
-                                  : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-                              }`}
-                            >
-                              <Calculator className="w-3.5 h-3.5" />
-                              <span>Manual Step Editor</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-[#64748b] dark:text-[#94a3b8]">
-                            {handwritingViewMode === 'notebook'
-                              ? 'Interactive Ruled Paper with Blue Bic Ink'
-                              : 'Keyboard Step Input with SymPy AST Subtraction'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {handwritingViewMode === 'notebook' ? (
-                        <RedPenGraderCanvas
-                          gradingResult={handwritingResult}
-                          onSelectSample={handleLoadHandwritingSample}
-                          onSolveTwin={(twinEq) => {
-                            setEquationInput(twinEq);
-                            setSolverSubTab('equation-solver');
-                          }}
-                          isLoading={handwritingLoading}
-                        />
-                      ) : (
-                        <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-8 space-y-6">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-                            <div>
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                                <Award className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-                                <span>WAEC Theory Marking Rubric (M1 / A1)</span>
-                              </div>
-                              <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
-                                &ldquo;Red-Pen&rdquo; Step Verifier &amp; Mistake Pinpointer
-                              </h2>
-                              <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
-                                Verifies line-by-line algebraic equivalence using SymPy AST subtraction. Pinpoints the exact line where equivalence breaks while awarding partial Method Marks (`M1`).
-                              </p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={resetCorrectSteps}
-                                className="px-3.5 py-2 text-xs font-semibold bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px] transition"
-                              >
-                                Load 100% Correct Steps
-                              </button>
-                              <button
-                                type="button"
-                                onClick={injectMistake}
-                                className="px-3.5 py-2 text-xs font-semibold bg-white dark:bg-[#0f172a] hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] transition"
-                              >
-                                Inject Sign Mistake (Line 2)
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1.5">
-                              Original Exam Question:
-                            </label>
-                            <input
-                              type="text"
-                              value={originalProblem}
-                              onChange={(e) => setOriginalProblem(e.target.value)}
-                              className="w-full sm:w-96 bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-2.5 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20"
-                            />
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
-                              Student&apos;s Sequential Handwritten Working Lines:
-                            </div>
-                            {studentSteps.map((step, idx) => (
-                              <div key={idx} className="flex items-center gap-3">
-                                <span className="w-9 h-9 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] font-mono text-xs flex items-center justify-center font-semibold flex-shrink-0">
-                                  {String(idx + 1).padStart(2, '0')}
-                                </span>
-                                <input
-                                  type="text"
-                                  value={step}
-                                  onChange={(e) => {
-                                    const updated = [...studentSteps];
-                                    updated[idx] = e.target.value;
-                                    setStudentSteps(updated);
-                                  }}
-                                  className="flex-1 bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-2.5 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20"
-                                />
-                                <div className="w-52 hidden sm:block p-2.5 bg-white dark:bg-[#0f172a] rounded-[8px] text-xs text-[#0f172a] dark:text-[#f8fafc] text-center border border-[#e2e8f0] dark:border-[#1e293b]">
-                                  <MathDisplay value={step} />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={handleVerify}
-                            disabled={verifyLoading}
-                            className="w-full py-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-xs sm:text-sm rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                          >
-                            {verifyLoading ? (
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <ShieldCheck className="w-4 h-4" />
-                                <span>Run Line-by-Line WAEC Diagnostic Verification</span>
-                              </>
-                            )}
-                          </button>
-
-                          {verifyResult && (
-                            <div className="p-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] space-y-4 animate-fadeIn">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-                                <div>
-                                  <div className="text-sm font-bold flex items-center gap-2">
-                                    {verifyResult.is_fully_correct ? (
-                                      <span className="flex items-center gap-1.5 text-[#1e3a8a] dark:text-[#93c5fd]">
-                                        <CheckCircle2 className="w-5 h-5 text-[#2563eb] dark:text-[#60a5fa]" />
-                                        100% Mathematically Rigorous Working
-                                      </span>
-                                    ) : (
-                                      <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
-                                        <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                                        Step-Level Equivalence Break Detected
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
-                                    {verifyResult.pedagogical_summary}
-                                  </p>
-                                </div>
-
-                                <div className="px-5 py-2.5 bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] text-center">
-                                  <div className="text-[10px] text-[#64748b] dark:text-[#94a3b8] font-semibold uppercase tracking-wider">
-                                    WAEC Marks Earned
-                                  </div>
-                                  <div className="text-2xl font-bold text-[#1e3a8a] dark:text-[#93c5fd] font-mono">
-                                    {verifyResult.waec_score_earned} / {verifyResult.waec_score_total}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="divide-y divide-[#e2e8f0] dark:divide-[#1e293b]">
-                                {verifyResult.step_analyses.map((sa) => (
-                                  <div
-                                    key={sa.step_index}
-                                    className="py-3.5 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-mono font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                                        Line {sa.step_index}
-                                      </span>
-                                      <span className="font-mono text-sm text-[#0f172a] dark:text-[#f8fafc] font-semibold">
-                                        {sa.raw_text}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
-                                        {sa.feedback}
-                                      </span>
-                                      <span
-                                        className={`px-2.5 py-1 rounded-[8px] text-xs font-semibold font-mono ${
-                                          sa.waec_mark === 'M1' || sa.waec_mark === 'A1'
-                                            ? 'bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd]'
-                                            : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
-                                        }`}
-                                      >
-                                        {sa.waec_mark}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </section>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* =================================================================
-                  VIEW C: META MUSE SPARK TOOL-LOOP TEST
-                 ================================================================= */}
-              {activeView === 'muse-spark' && (
-                <div className="space-y-8 animate-fadeIn">
                   <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-8 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
                       <div>
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
                           <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-                          <span>Agentic Orchestration • Meta Muse Spark 1.3</span>
+                          <span>Interactive AI Math Tutor • Meta Muse Spark 1.3</span>
                         </div>
                         <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
-                          Meta Muse Spark Tool-Loop Test Lab
+                          Learn Any Math Problem Step-by-Step
                         </h2>
                         <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]">
-                          Execute the full Neuro-Symbolic loop: Multimodal Vision transcription &rarr; Native Tool Call (`solve_equation_deterministically` &amp; `generate_parametric_twin_question`) &rarr; WAEC M1/A1 Scaffolding.
+                          Enter an equation below (or scan your paper using the top-right <strong>Scan</strong> button) to get a crystal-clear, zero-hallucination breakdown tailored to your learning level and dialect.
                         </p>
                       </div>
 
-                      <span className="px-3 py-1.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-mono font-semibold self-start sm:self-center">
-                        Native Tool-Call Loop
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => navigateToView('practice')}
+                        className="px-3.5 py-2 rounded-[8px] bg-white dark:bg-[#0f172a] hover:bg-[#dbeafe] dark:hover:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] border border-[#e2e8f0] dark:border-[#1e293b] text-xs font-semibold transition flex items-center gap-1.5 self-start sm:self-center shadow-sm"
+                      >
+                        <Award className="w-3.5 h-3.5 text-[#2563eb]" />
+                        <span>Go to Practice</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                       <div className="lg:col-span-7 space-y-4">
                         <div>
                           <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1.5">
-                            Target WAEC Formula for Tool-Loop Execution
+                            Enter or Select a Math Equation to Learn
                           </label>
                           <input
                             type="text"
@@ -1623,7 +1065,7 @@ export default function HomePage() {
 
                         <div className="py-5 px-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] text-center">
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] block mb-1">
-                            Rendered Target Equation
+                            Equation Preview
                           </span>
                           <MathDisplay
                             value={museTestEquation}
@@ -1632,103 +1074,67 @@ export default function HomePage() {
                           />
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { label: 'WAEC 2024 Q1(a): 3x² - 5x - 2 = 0', eq: '3x^2 - 5x - 2 = 0' },
-                            { label: 'Quadratic: 2x² + 5x - 3 = 0', eq: '2x^2 + 5x - 3 = 0' },
-                            { label: 'Factorisation: x² - 7x + 10 = 0', eq: 'x^2 - 7x + 10 = 0' },
-                          ].map((sample) => (
-                            <button
-                              key={sample.eq}
-                              type="button"
-                              onClick={() => setMuseTestEquation(sample.eq)}
-                              className="px-3 py-1.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-semibold transition"
-                            >
-                              {sample.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="lg:col-span-5 p-5 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] flex flex-col justify-between space-y-4">
-                        <div className="space-y-4">
-                          <div>
-                            <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] flex items-center gap-1.5 mb-2">
-                              <Layers className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
-                              <span>Scaffolding Depth:</span>
-                            </span>
-                            <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#f0f5fa] dark:bg-[#0b1120] rounded-[8px]">
-                              {(['beginner', 'intermediate', 'expert'] as PedagogicalLevel[]).map(
-                                (lvl) => (
-                                  <button
-                                    key={lvl}
-                                    type="button"
-                                    onClick={() => setPedagogicalLevel(lvl)}
-                                    className={`py-1.5 rounded-[8px] text-xs font-semibold capitalize transition ${
-                                      pedagogicalLevel === lvl
-                                        ? 'bg-[#2563eb] text-white shadow-sm'
-                                        : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-                                    }`}
-                                  >
-                                    {lvl}
-                                  </button>
-                                )
-                              )}
-                            </div>
-                          </div>
-
-                          <div>
-                            <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] flex items-center gap-1.5 mb-2">
-                              <Globe2 className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
-                              <span>Language Mode:</span>
-                            </span>
-                            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#f0f5fa] dark:bg-[#0b1120] rounded-[8px]">
-                              <button
-                                type="button"
-                                onClick={() => setLanguageMode('standard')}
-                                className={`py-1.5 rounded-[8px] text-xs font-semibold transition ${
-                                  languageMode === 'standard'
-                                    ? 'bg-[#2563eb] text-white shadow-sm'
-                                    : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-                                }`}
-                              >
-                                Standard English
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setLanguageMode('pidgin')}
-                                className={`py-1.5 rounded-[8px] text-xs font-semibold transition ${
-                                  languageMode === 'pidgin'
-                                    ? 'bg-[#2563eb] text-white shadow-sm'
-                                    : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
-                                }`}
-                              >
-                                Nigerian Pidgin 🇳🇬
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
+                        {/* Explain Step-by-Step Action Button placed under the equation */}
                         <button
                           type="button"
                           onClick={() =>
                             runMultimodalSolve('mockBase64ImageData', museTestEquation)
                           }
                           disabled={transcribeLoading}
-                          className="w-full py-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-xs sm:text-sm rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                          className="w-full py-3.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-sm rounded-[10px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-[0.99]"
                         >
                           {transcribeLoading ? (
                             <>
                               <RefreshCw className="w-4 h-4 animate-spin" />
-                              <span>Running Tool-Call Loop...</span>
+                              <span>Generating Step-by-Step Lesson...</span>
                             </>
                           ) : (
                             <>
                               <Sparkles className="w-4 h-4" />
-                              <span>Trigger Meta Muse Spark Pipeline</span>
+                              <span>Explain Step-by-Step</span>
                             </>
                           )}
                         </button>
+                      </div>
+
+                      {/* Right Column: Examples */}
+                      <div className="lg:col-span-5 p-5 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] flex flex-col justify-between space-y-3">
+                        <div>
+                          <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] flex items-center gap-1.5 mb-2">
+                            <BookOpen className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+                            <span>Examples</span>
+                          </span>
+                          <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mb-3 leading-[1.5]">
+                            Select an example problem below to load it into the solver:
+                          </p>
+                          <div className="space-y-2">
+                            {[
+                              { label: 'Simple Factoring: x² + 5x + 6 = 0', eq: 'x^2 + 5x + 6 = 0' },
+                              { label: 'WAEC 2024 Q1(a): 3x² - 5x - 2 = 0', eq: '3x^2 - 5x - 2 = 0' },
+                              { label: 'Quadratic: 2x² + 5x - 3 = 0', eq: '2x^2 + 5x - 3 = 0' },
+                              { label: 'Factorisation: x² - 7x + 10 = 0', eq: 'x^2 - 7x + 10 = 0' },
+                            ].map((sample) => {
+                              const isSelected = museTestEquation === sample.eq;
+                              return (
+                                <button
+                                  key={sample.eq}
+                                  type="button"
+                                  onClick={() => setMuseTestEquation(sample.eq)}
+                                  className={`w-full p-2.5 rounded-[8px] border text-left text-xs font-semibold transition flex items-center justify-between ${
+                                    isSelected
+                                      ? 'bg-[#e0f0fe] dark:bg-[#1e293b] border-[#2563eb] text-[#2563eb] dark:text-[#60a5fa] shadow-sm'
+                                      : 'bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 text-[#0f172a] dark:text-[#f8fafc] border-[#e2e8f0] dark:border-[#1e293b]'
+                                  }`}
+                                >
+                                  <span className="truncate">{sample.label}</span>
+                                  {isSelected && (
+                                    <Check className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa] flex-shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </section>
@@ -1738,7 +1144,75 @@ export default function HomePage() {
               )}
 
               {/* =================================================================
-                  VIEW D: SETTINGS PAGE (Including Light / Dark / System Theme Selector)
+                  PAGE 2: PRACTICE (Interactive Workbook, Twin Drills & Grader)
+                 ================================================================= */}
+              {activeView === 'practice' && (
+                <PracticeWorkspaceView
+                  originalProblem={originalProblem}
+                  onChangeOriginalProblem={setOriginalProblem}
+                  studentSteps={studentSteps}
+                  onChangeStudentSteps={setStudentSteps}
+                  verifyResult={verifyResult}
+                  verifyLoading={verifyLoading}
+                  onVerifySteps={handleVerify}
+                  onResetCorrectSteps={resetCorrectSteps}
+                  onInjectMistake={injectMistake}
+                  handwritingResult={handwritingResult}
+                  handwritingLoading={handwritingLoading}
+                  onLoadHandwritingSample={handleLoadHandwritingSample}
+                  latestLearnedSolution={aiSolution}
+                  onSendToLearn={(eq) => {
+                    setMuseTestEquation(eq);
+                    setActiveView('learn');
+                    runMultimodalSolve('mockBase64ImageData', eq);
+                  }}
+                />
+              )}
+
+              {/* =================================================================
+                  PAGE 3: JUDGE MODE (Dedicated Hackathon Evaluation Suite)
+                 ================================================================= */}
+              {activeView === 'judge-mode' && (
+                <JudgeModeView
+                  engineStatus={engineStatus}
+                  engineLatency={engineLatency}
+                  onOpenTelemetryDrawer={() => setIsJudgeDrawerOpen(true)}
+                  activeExamImage={activeExamImage}
+                  samSegments={samSegments}
+                  samLoading={samLoading}
+                  selectedSegmentId={selectedSegment?.id || null}
+                  onSelectSegment={handleSelectSegment}
+                  onLoadSampleSheet={handleLoadSampleSheet}
+                  onOpenUploadDialog={() => fileInputRef.current?.click()}
+                  onOpenCameraBridge={() => setIsCameraModalOpen(true)}
+                  onTriggerMusePidginDemo={() => {
+                    const targetEq = '3x^2 - 5x - 2 = 0';
+                    setMuseTestEquation(targetEq);
+                    runMultimodalSolve('mockBase64ImageData', targetEq, 'intermediate', 'pidgin');
+                  }}
+                  transcribeLoading={transcribeLoading}
+                  aiSolutionCard={renderAiSolutionCard()}
+                  telemetry={telemetry}
+                  handwritingResult={handwritingResult}
+                  handwritingLoading={handwritingLoading}
+                  onLoadHandwritingSample={handleLoadHandwritingSample}
+                  equationInput={equationInput}
+                  onChangeEquationInput={setEquationInput}
+                  solveResult={solveResult}
+                  solveLoading={solveLoading}
+                  solveLatency={solveLatency}
+                  onSolveDeterministic={handleSolve}
+                  onNavigateToPractice={(eq) => {
+                    setOriginalProblem(eq);
+                    setStudentSteps(['', '', '']);
+                    setVerifyResult(null);
+                    setActiveView('practice');
+                  }}
+                />
+              )}
+
+              {/* =================================================================
+                  PAGE 4: SETTINGS (Appearance, Pedagogy, Dialect & Voice)
                  ================================================================= */}
               {activeView === 'settings' && (
                 <div className="space-y-6 animate-fadeIn">
@@ -2074,17 +1548,17 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* ISOLATED COLLAPSIBLE TELEMETRY HUD & FOOTER AT THE BOTTOM OF MAIN CONTENT AREA */}
+            {/* FOOTER AT THE BOTTOM OF MAIN CONTENT AREA */}
             <div className="max-w-5xl w-full mx-auto pt-10 mt-10 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-4">
-              {/* Collapsible Judge Telemetry HUD & Native Tool Invocations */}
-              <TelemetryHud
-                telemetry={telemetry}
-                engineStatus={engineStatus}
-                engineLatency={engineLatency}
-                defaultExpanded={autoExpandTelemetry}
-              />
+              {activeView !== 'judge-mode' && (
+                <TelemetryHud
+                  telemetry={telemetry}
+                  engineStatus={engineStatus}
+                  engineLatency={engineLatency}
+                  defaultExpanded={autoExpandTelemetry}
+                />
+              )}
 
-              {/* Clean Minimal Workspace Footer */}
               <footer className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 text-xs text-[#64748b] dark:text-[#94a3b8]">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-[#0f172a] dark:text-[#f8fafc]">
@@ -2097,24 +1571,24 @@ export default function HomePage() {
                 <div className="flex flex-wrap items-center gap-4">
                   <button
                     type="button"
-                    onClick={() => navigateToView('scanner')}
+                    onClick={() => navigateToView('learn')}
                     className="hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
                   >
-                    Scanner
+                    Learn
                   </button>
                   <button
                     type="button"
-                    onClick={() => navigateToView('solver')}
+                    onClick={() => navigateToView('practice')}
                     className="hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
                   >
-                    Solver
+                    Practice
                   </button>
                   <button
                     type="button"
-                    onClick={() => navigateToView('muse-spark')}
+                    onClick={() => navigateToView('judge-mode')}
                     className="hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
                   >
-                    Tool-Loop
+                    Judge Mode
                   </button>
                   <button
                     type="button"
@@ -2159,7 +1633,7 @@ export default function HomePage() {
         onProfileUpdated={(updated) => setUserProfile(updated)}
       />
 
-      {/* Phase 6: Hackathon Judge Architecture & Telemetry Drawer */}
+      {/* Hackathon Judge Architecture & Telemetry Drawer */}
       <JudgeTelemetryDrawer
         isOpen={isJudgeDrawerOpen}
         onClose={() => setIsJudgeDrawerOpen(false)}

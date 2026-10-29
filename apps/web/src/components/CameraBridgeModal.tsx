@@ -10,6 +10,7 @@ import {
   Copy,
   Check,
   Upload,
+  Wifi,
 } from 'lucide-react';
 
 interface CameraBridgeModalProps {
@@ -113,15 +114,15 @@ export default function CameraBridgeModal({
         if (!res.ok) return;
         const data = await res.json();
 
-        if (data.status === 'connected' && status === 'waiting') {
-          setStatus('connected');
+        if (data.status === 'connected') {
+          setStatus((prev) => (prev === 'waiting' || prev === 'initializing' ? 'connected' : prev));
         }
 
         if (data.status === 'completed' && data.imageData) {
           handleSuccess(data.imageData);
         }
       } catch (_) {}
-    }, 1500);
+    }, 1200);
   };
 
   const handleSuccess = (imageData: string) => {
@@ -235,6 +236,16 @@ export default function CameraBridgeModal({
               <span>Waiting for phone scan...</span>
             </div>
           )}
+        </div>
+
+        {/* Same Wi-Fi / Hotspot Requirement Note */}
+        <div className="mb-4 px-3.5 py-2.5 rounded-[10px] bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 flex items-start gap-2.5 text-left">
+          <Wifi className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-900 dark:text-amber-200 leading-[1.5]">
+            <strong className="font-semibold">Same Network Required:</strong> Make sure your{' '}
+            <strong className="font-semibold">laptop and phone are connected to the same Wi-Fi network</strong>{' '}
+            (or mobile hotspot) before scanning the QR code.
+          </p>
         </div>
 
         {/* Link sharing & Desktop fallback */}

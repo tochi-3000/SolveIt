@@ -47,7 +47,7 @@ function CaptureContent() {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_DIM = 1600;
+        const MAX_DIM = 1280;
         let width = img.width;
         let height = img.height;
 
@@ -69,23 +69,37 @@ function CaptureContent() {
         }
 
         ctx.drawImage(img, 0, 0, width, height);
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.78);
         setPhotoPreview(compressedBase64);
 
         uploadToDesktop(compressedBase64);
       };
+      img.onerror = () => {
+        setError('Could not decode captured photo. Please try snapping again.');
+        setUploading(false);
+      };
       img.src = e.target?.result as string;
+    };
+    reader.onerror = () => {
+      setError('Failed to read image file from camera.');
+      setUploading(false);
     };
     reader.readAsDataURL(file);
   };
 
-  const uploadToDesktop = async (base64Data: string) => {
+  const uploadToDesktop = async (base64Data: string, attempt = 1) => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch(`/api/session/${sessionId}/upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageData: base64Data }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const data = await res.json();
       if (!res.ok) {
@@ -93,11 +107,20 @@ function CaptureContent() {
       }
 
       setSuccess(true);
+      setUploading(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to beam photo to computer';
+      if (attempt < 2) {
+        // Automatic single retry on transient mobile Wi-Fi hiccup
+        return uploadToDesktop(base64Data, attempt + 1);
+      }
+      const isTimeout = err instanceof DOMException && err.name === 'AbortError';
+      const msg = isTimeout
+        ? 'Connection timed out while beaming. Ensure your phone and laptop are still on the same Wi-Fi network, then tap Retry.'
+        : err instanceof Error
+        ? err.message
+        : 'Failed to beam photo to computer';
       console.error(err);
       setError(msg);
-    } finally {
       setUploading(false);
     }
   };

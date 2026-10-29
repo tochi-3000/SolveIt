@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Eye, X, RefreshCw, ZoomIn, Info } from 'lucide-react';
+import MathDisplay from './MathDisplay';
 
 interface MathematicalDiagramRendererProps {
   topic: string;
@@ -79,7 +80,9 @@ export const MathematicalDiagramRenderer: React.FC<MathematicalDiagramRendererPr
           </div>
           <h2 className="text-2xl font-black text-white mt-1">Mathematical Geometric Figure</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Visual concept representation generated for <strong>{topic}</strong> ({equation}).
+            Visual concept representation generated for <strong>{topic}</strong> (
+            <MathDisplay value={equation} inline />
+            ).
           </p>
         </div>
 

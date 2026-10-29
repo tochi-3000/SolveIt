@@ -16,8 +16,15 @@ const hasValidClerkKeys = (): boolean => {
 const clerkHandler = clerkMiddleware();
 
 export default function middleware(req: NextRequest, event: NextFetchEvent) {
-  // Production Safeguard: Only invoke Clerk Edge Middleware when valid keys are configured.
-  // Prevents runtime crashes in Guest/Judge fallback mode while properly forwarding NextFetchEvent.
+  const { pathname } = req.nextUrl;
+
+  // Production Safeguard: Bypass Clerk authentication handshakes for mobile LAN camera pairing routes
+  // (/capture and /api/session/*) so phones connecting via local Wi-Fi IP never stall on auth redirects.
+  if (pathname.startsWith('/capture') || pathname.startsWith('/api/session')) {
+    return NextResponse.next();
+  }
+
+  // Only invoke Clerk Edge Middleware when valid keys are configured.
   if (hasValidClerkKeys()) {
     return clerkHandler(req, event);
   }
