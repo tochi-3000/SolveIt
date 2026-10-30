@@ -34,9 +34,11 @@ export function cleanAndExtractJson<T>(rawContent: string): T {
       try {
         return JSON.parse(jsonMatch[0]) as T;
       } catch (regexErr) {
-        // Try sanitizing unescaped single backslashes common in LaTeX
+        // Try sanitizing unescaped single backslashes common in LaTeX (\frac, \$, \%, etc.)
         try {
-          const sanitizedLatex = jsonMatch[0].replace(/\\([a-zA-Z]+)/g, '\\\\$1');
+          const sanitizedLatex = jsonMatch[0]
+            .replace(/(?<!\\)\\([a-zA-Z]+)/g, '\\\\$1')
+            .replace(/(?<!\\)\\([%$&#_{},;! ])/g, '\\\\$1');
           return JSON.parse(sanitizedLatex) as T;
         } catch (_) {}
       }

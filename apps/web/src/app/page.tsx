@@ -136,11 +136,7 @@ export default function HomePage() {
 
   // Practice Page (Step Verifier & Handwritten Grader) State
   const [originalProblem, setOriginalProblem] = useState<string>('3x^2 - 5x - 2 = 0');
-  const [studentSteps, setStudentSteps] = useState<string[]>([
-    '3x^2 - 6x + x - 2 = 0',
-    '3x(x - 2) + 1(x - 2) = 0',
-    '(3x + 1)(x - 2) = 0',
-  ]);
+  const [studentSteps, setStudentSteps] = useState<string[]>(['', '', '']);
   const [verifyResult, setVerifyResult] = useState<VerifyStepsResponse | null>(null);
   const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
 
@@ -322,6 +318,29 @@ export default function HomePage() {
   };
 
   const handlePhotoReceived = async (base64Image: string) => {
+    if (activeView === 'practice') {
+      setHandwritingLoading(true);
+      try {
+        const res = await fetch('/api/math/grade-handwriting', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: base64Image,
+            originalProblem,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setHandwritingResult(data);
+        }
+      } catch (err) {
+        console.error('Camera bridge practice grading error:', err);
+      } finally {
+        setHandwritingLoading(false);
+      }
+      return;
+    }
+
     try {
       const optimized = await optimizeImage(base64Image);
       segmentExamImage(optimized);
@@ -432,7 +451,29 @@ export default function HomePage() {
     }
   };
 
-  const handleVerify = async () => {
+  const handleVerify = async (
+    canvasImageBase64?: string | null,
+    inputMode: 'keyboard' | 'pen' | 'split' = 'keyboard'
+  ) => {
+    const trimmedSteps = studentSteps.filter((s) => s.trim().length > 0);
+    const hasCanvasInk = Boolean(canvasImageBase64 && canvasImageBase64.startsWith('data:image/'));
+
+    if (trimmedSteps.length === 0 && !hasCanvasInk) {
+      setVerifyResult({
+        success: false,
+        is_fully_correct: false,
+        total_steps: 0,
+        valid_step_count: 0,
+        first_error_index: null,
+        step_analyses: [],
+        waec_score_earned: 0,
+        waec_score_total: 10,
+        pedagogical_summary:
+          'Your canvas is currently empty. Please write your working steps on the lines above, draw your solution with the Light Pen / Stylus, or click "Load Sample Working" to see how this problem is solved.',
+      });
+      return;
+    }
+
     setVerifyLoading(true);
     try {
       const res = await fetch('/api/verify-steps', {
@@ -440,12 +481,16 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           originalProblem,
-          steps: studentSteps.filter((s) => s.trim().length > 0),
+          steps: trimmedSteps,
           solveFor: 'x',
+          canvasImageBase64,
+          inputMode,
         }),
       });
       const data = await res.json();
-      setVerifyResult(data);
+      if (data && !data.error) {
+        setVerifyResult(data);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -1160,7 +1205,11 @@ export default function HomePage() {
               {activeView === 'practice' && (
                 <PracticeWorkspaceView
                   originalProblem={originalProblem}
-                  onChangeOriginalProblem={setOriginalProblem}
+                  onChangeOriginalProblem={(nextProb) => {
+                    setOriginalProblem(nextProb);
+                    setVerifyResult(null);
+                    setStudentSteps(['', '', '']);
+                  }}
                   studentSteps={studentSteps}
                   onChangeStudentSteps={setStudentSteps}
                   verifyResult={verifyResult}
@@ -1177,6 +1226,7 @@ export default function HomePage() {
                     setActiveView('learn');
                     runMultimodalSolve('mockBase64ImageData', eq);
                   }}
+                  onOpenCameraBridge={() => setIsCameraModalOpen(true)}
                 />
               )}
 

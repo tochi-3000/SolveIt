@@ -78,7 +78,10 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-screen bg-[#f4f7fa] dark:bg-[#070b14] text-[#0f172a] dark:text-[#f8fafc] font-sans antialiased selection:bg-[#dbeafe] selection:text-[#1e3a8a] dark:selection:bg-[#1e3a8a] dark:selection:text-[#f8fafc]">
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-[#f4f7fa] dark:bg-[#070b14] text-[#0f172a] dark:text-[#f8fafc] font-sans antialiased selection:bg-[#dbeafe] selection:text-[#1e3a8a] dark:selection:bg-[#1e3a8a] dark:selection:text-[#f8fafc]"
+      >
         {children}
       </body>
     </html>

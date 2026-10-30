@@ -17,7 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserOrGuest, deductCurrentCredits } from '@/lib/auth';
 import { GradeHandwritingResponse, HandwrittenGradedLine } from '@solvam/shared-types';
-import { verifyStudentSteps } from '@/lib/symbolicClient';
+import { verifyStudentWorking } from '@/lib/math/unifiedVerifier';
 import {
   getFlawedStudentNotebookFixture,
   getCorrectStudentNotebookFixture,
@@ -97,14 +97,22 @@ export async function POST(req: NextRequest) {
     } else {
       // 4. Dynamic Execution on Arbitrary Uploaded Student Work
       const metaApiKey = process.env.META_API_KEY;
+      const cleanImageUri = imageBase64
+        ? imageBase64.startsWith('data:')
+          ? imageBase64
+          : `data:image/jpeg;base64,${imageBase64}`
+        : undefined;
 
       if (metaApiKey && metaApiKey !== 'mock' && metaApiKey !== 'placeholder') {
-        // Real Meta Model API Vision extraction + SymPy equivalence
+        // Real Meta Model API Vision extraction + Unified Multimodal & CAS Equivalence
         try {
-          const lines = await extractHandwrittenLinesWithMetaVision(metaApiKey, imageBase64);
+          const lines = await extractHandwrittenLinesWithMetaVision(metaApiKey, cleanImageUri!);
           const rawStepTexts = lines.map((l) => l.rawText);
 
-          const verification = await verifyStudentSteps(originalProblem, rawStepTexts, solveFor);
+          const verification = await verifyStudentWorking(originalProblem, rawStepTexts, {
+            solveFor,
+            metaApiKey,
+          });
 
           const gradedLines: HandwrittenGradedLine[] = lines.map((line, idx) => {
             const analysis = verification.step_analyses?.[idx];
@@ -118,7 +126,7 @@ export async function POST(req: NextRequest) {
 
           responseData = {
             success: true,
-            model: 'Meta Muse Spark 1.3 & Deterministic SymPy CAS',
+            model: 'Meta Muse Spark 1.3 & Deterministic WAEC Grader',
             isFullyCorrect: verification.is_fully_correct,
             totalLines: gradedLines.length,
             validLineCount: gradedLines.filter((l) => l.isMathematicallyValid).length,
@@ -127,6 +135,7 @@ export async function POST(req: NextRequest) {
             waecScoreTotal: verification.waec_score_total,
             lines: gradedLines,
             pedagogicalSummary: verification.pedagogical_summary,
+            imageUrl: cleanImageUri,
             durationMs: Math.round(performance.now() - startTime),
           };
         } catch (visionErr) {
@@ -134,7 +143,7 @@ export async function POST(req: NextRequest) {
           const fixture = getFlawedStudentNotebookFixture();
           responseData = {
             success: true,
-            model: 'Meta Muse Spark 1.3 & Deterministic SymPy CAS (Fallback)',
+            model: 'Meta Muse Spark 1.3 & Deterministic WAEC Grader (Fallback)',
             isFullyCorrect: fixture.isFullyCorrect,
             totalLines: fixture.lines.length,
             validLineCount: 1,
@@ -143,7 +152,7 @@ export async function POST(req: NextRequest) {
             waecScoreTotal: fixture.waecScoreTotal,
             lines: fixture.lines,
             pedagogicalSummary: fixture.pedagogicalSummary,
-            imageUrl: fixture.svgDataUri,
+            imageUrl: cleanImageUri || fixture.svgDataUri,
             durationMs: Math.round(performance.now() - startTime),
           };
         }
@@ -152,7 +161,7 @@ export async function POST(req: NextRequest) {
         const fixture = getFlawedStudentNotebookFixture();
         responseData = {
           success: true,
-          model: 'Meta Muse Spark 1.3 & Deterministic SymPy CAS',
+          model: 'Meta Muse Spark 1.3 & Deterministic WAEC Grader',
           isFullyCorrect: fixture.isFullyCorrect,
           totalLines: fixture.lines.length,
           validLineCount: 1,
@@ -161,7 +170,7 @@ export async function POST(req: NextRequest) {
           waecScoreTotal: fixture.waecScoreTotal,
           lines: fixture.lines,
           pedagogicalSummary: fixture.pedagogicalSummary,
-          imageUrl: fixture.svgDataUri,
+          imageUrl: cleanImageUri || fixture.svgDataUri,
           durationMs: Math.round(performance.now() - startTime),
         };
       }

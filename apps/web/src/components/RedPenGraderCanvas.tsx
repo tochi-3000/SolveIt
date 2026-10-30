@@ -135,15 +135,15 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
       {/* Main Grid: Visual Notebook Canvas (Left) + Line Breakdown (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Visual Notebook Page with Overlays (7 cols) */}
-        <div className="lg:col-span-7 flex flex-col items-center">
-          <div className="relative w-full rounded-[14px] overflow-hidden border border-[#cbd5e1] dark:border-[#334155] shadow-lg select-none bg-[#FCFAF2]">
+        <div className="lg:col-span-7 flex flex-col items-center justify-start">
+          <div className="relative inline-block max-w-full rounded-[14px] overflow-hidden border border-[#cbd5e1] dark:border-[#334155] shadow-lg select-none bg-[#FCFAF2]">
             {/* The Notebook Image / SVG */}
             {gradingResult.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={gradingResult.imageUrl}
                 alt="Student Handwritten Notebook Working"
-                className="w-full h-auto block object-contain max-h-[640px]"
+                className="w-auto max-w-full h-auto block max-h-[720px] mx-auto"
                 draggable={false}
               />
             )}

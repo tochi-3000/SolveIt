@@ -326,8 +326,8 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
             <span className="font-semibold text-emerald-700 dark:text-emerald-300">Foundation Mode Active:</span>
             <p className="text-[#64748b] dark:text-[#94a3b8]">
               {isPidgin
-                ? 'We break down every step with Balogun market trading analogies so that math fear go disappear completely! Zero skipped arithmetic.'
-                : 'Every micro-step is broken down explicitly with relatable market analogies. Zero skipped arithmetic steps.'}
+                ? 'Every step dey explained in simple, direct language with zero skipped arithmetic.'
+                : 'Every micro-step is explained in plain, direct language with zero skipped arithmetic steps.'}
             </p>
           </div>
         </div>

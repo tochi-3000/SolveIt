@@ -26,6 +26,7 @@ CRITICAL EXPLANATION RULES (STRICT ADHERENCE REQUIRED):
 
 3. FORMATTING & WAEC RUBRIC TAGS:
    - Wrap any inline math inside "explanation" or "commonPitfall" in single dollar signs $...$ (e.g., $2x^2 + 2x - 12 = 0$). NEVER output raw undelimited "\\left" or "\\right" in prose.
+   - CURRENCY RULE: Never nest a currency dollar sign ($) inside $...$ math delimiters (do NOT write "$\\$671.40$" or "$\\671.40$"). Write currency amounts as plain numbers or outside math delimiters (e.g. $671.40$ without inner backslashes).
    - Make each step's "mathLatex" show the exact algebraic transition clearly without outer $ delimiters.
    - Tag every step with [M1] (Method Mark) or [A1] (Accuracy Mark).
 

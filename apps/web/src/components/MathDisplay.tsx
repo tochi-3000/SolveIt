@@ -10,7 +10,17 @@ interface MathDisplayProps {
   inline?: boolean;
 }
 
-const MATH_REGEX = /(?:\$\$([\s\S]*?)\$\$|\\\[([\s\S]*?)\\\]|\\\(([\s\S]*?)\\\)|\$([^\$\n]+?)\$)/g;
+/**
+ * Matches explicit math blocks and inline math delimiters while ignoring escaped currency dollar signs (\$).
+ * Allows escaped \$ inside inline $...$ blocks (e.g. $I = \$671.40$).
+ */
+const MATH_REGEX =
+  /(?:\$\$([\s\S]*?)\$\$|\\\[([\s\S]*?)\\\]|\\\(([\s\S]*?)\\\)|(?<!\\)\$((?:\\\$|[^\$\n])+?)(?<!\\)\$)/g;
+
+/**
+ * Detects whether a string contains at least one UNESCAPED math delimiter ($$, \[, \(, or unescaped $).
+ */
+const UNESCAPED_MATH_DELIMITER_REGEX = /(?:(?<!\\)\$\$|\\\[|\\\(|(?<!\\)\$)/;
 
 /**
  * Matches undelimited mathematical sub-expressions embedded inside natural language prose
@@ -21,11 +31,24 @@ const UNDELIMITED_PROSE_MATH_REGEX =
   /(?:(?:\b[0-9]+(?:\.[0-9]+)?|\b[a-zA-Z]\b|\([+-]?[0-9a-zA-Z]+\)|\\[a-zA-Z]+(?:\{[^{}]*\})*)\s*(?:[+\-*/=<>^]|\\[a-zA-Z]+(?:\{[^{}]*\})*|[²³])\s*)+(?:[0-9]+(?:\.[0-9]+)?|\b[a-zA-Z]\b|\([+-]?[0-9a-zA-Z]+\)|\\[a-zA-Z]+(?:\{[^{}]*\})*|[²³])+/g;
 
 const LATEX_TRIGGER_REGEX =
-  /\\(?:frac|sqrt|pm|times|cdot|div|quad|qquad|text|left|right|implies|Rightarrow|Delta|alpha|beta|theta|pi|leq|geq|neq|approx)\b|\^[0-9a-zA-Z{+-]|[²³]/;
+  /\\(?:frac|sqrt|pm|times|cdot|div|quad|qquad|text|left|right|implies|Rightarrow|Delta|alpha|beta|theta|pi|leq|geq|neq|approx)\b|\\[$%]|\^[0-9a-zA-Z{+-]|[²³]/;
 
 interface Segment {
   type: 'text' | 'inline-math' | 'block-math';
   content: string;
+}
+
+/**
+ * Normalizes malformed currency/LaTeX dollar patterns emitted by LLMs:
+ * 1. `$\671.40$` (where LLM tried to escape `$` before digits inside `$...$` and dropped the inner `$`) -> `\$671.40`
+ * 2. `$\$671.40$` (standalone currency wrapped in `$...$`) -> `\$671.40`
+ * 3. `\$671.40$` (escaped opening `\$` with a stray closing `$`) -> `\$671.40`
+ */
+function normalizeCurrencyDelimiters(raw: string): string {
+  return raw
+    .replace(/(?<!\\)\$\s*\\(\d[\d,]*(?:\.\d+)?)\s*\$/g, '\\$$1')
+    .replace(/(?<!\\)\$\s*\\\$(\d[\d,]*(?:\.\d+)?)\s*\$/g, '\\$$1')
+    .replace(/(?<!\$)\\\$(\d[\d,]*(?:\.\d+)?)\$/g, '\\$$1');
 }
 
 /**
@@ -119,10 +142,11 @@ function parseSegments(value: string): Segment[] {
  * rather than a natural-language prose sentence.
  */
 function isStandaloneEquation(value: string): boolean {
-  // Strip \text{...}, LaTeX commands, and numbers/operators to count natural prose words
+  // Strip \text{...}, LaTeX commands, escaped symbols (\$, \%), and math keywords to count natural prose words
   const withoutLatex = value
     .replace(/\\text\s*\{[^{}]*\}/g, ' ')
     .replace(/\\[a-zA-Z]+/g, ' ')
+    .replace(/\\[$%&#_]/g, ' ')
     .replace(/\b(?:and|or|mod|sin|cos|tan|log|ln|lim|max|min)\b/gi, ' ');
 
   const proseWords = withoutLatex.match(/\b[a-zA-Z]{3,}\b/g) || [];
@@ -138,8 +162,11 @@ function isStandaloneEquation(value: string): boolean {
 
 function renderKatexHtml(latex: string, isBlock: boolean): string {
   try {
+    // Production Safeguard: In TeX/LaTeX, a single backslash followed by a digit (e.g. \671.40)
+    // is never a valid command and occurs only when an LLM drops '$' from '\$671.40'.
     const normalized = latex
       .trim()
+      .replace(/(?<!\\)\\(?=\d)/g, '\\$')
       .replace(/²/g, '^2')
       .replace(/³/g, '^3');
 
@@ -163,18 +190,20 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({
   const renderedElements = useMemo(() => {
     if (!value) return null;
 
+    const normalizedValue = normalizeCurrencyDelimiters(value);
+
     // If caller explicitly requested displayMode (e.g. step mathLatex or finalAnswerLatex),
     // strip any redundant outer $...$ or $$...$$ wrapper and render as block KaTeX,
     // BUT ONLY IF it is a standalone math equation, NOT natural-language prose or a word problem!
     if (displayMode) {
-      const stripped = value
+      const stripped = normalizedValue
         .trim()
         .replace(/^\$\$([\s\S]*)\$\$$/, '$1')
         .replace(/^\\\[([\s\S]*)\\\]$/, '$1')
         .replace(/^\\\(([\s\S]*)\\\)$/, '$1')
-        .replace(/^\$([^\$]+)\$$/, '$1');
+        .replace(/^(?<!\\)\$((?:\\\$|[^\$])+)(?<!\\)\$$/, '$1');
 
-      if (!/(?:\$\$|\\\[|\\\(|\$)/.test(stripped) && isStandaloneEquation(stripped)) {
+      if (!UNESCAPED_MATH_DELIMITER_REGEX.test(stripped) && isStandaloneEquation(stripped)) {
         return (
           <span
             dangerouslySetInnerHTML={{ __html: renderKatexHtml(stripped, true) }}
@@ -184,36 +213,41 @@ export const MathDisplay: React.FC<MathDisplayProps> = ({
       }
     }
 
-    // Check if the string has explicit math delimiters ($...$, $$...$$, \(...\), \[...\])
-    const hasDelimiters = /(?:\$\$|\\\[|\\\(|\$)/.test(value);
-    if (!hasDelimiters && isStandaloneEquation(value)) {
+    // Check if the string has explicit UNESCAPED math delimiters ($...$, $$...$$, \(...\), \[...\])
+    const hasDelimiters = UNESCAPED_MATH_DELIMITER_REGEX.test(normalizedValue);
+    if (!hasDelimiters && isStandaloneEquation(normalizedValue)) {
       return (
         <span
-          dangerouslySetInnerHTML={{ __html: renderKatexHtml(value, displayMode) }}
+          dangerouslySetInnerHTML={{ __html: renderKatexHtml(normalizedValue, displayMode) }}
           className="inline-block max-w-full overflow-x-auto"
         />
       );
     }
 
-    const segments = parseSegments(value);
+    const segments = parseSegments(normalizedValue);
 
     return segments.map((seg, idx) => {
       if (seg.type === 'text') {
+        // Unescape literal \$ and \% in plain text segments so backslashes never leak onto the screen
+        const cleanText = seg.content.replace(/\\\$/g, '$').replace(/\\%/g, '%');
         return (
           <span key={idx} className="whitespace-normal break-words">
-            {seg.content}
+            {cleanText}
           </span>
         );
       }
 
-      const isBlock = seg.type === 'block-math' || (displayMode && segments.length === 1 && isStandaloneEquation(seg.content));
+      const isBlock =
+        seg.type === 'block-math' ||
+        (displayMode && segments.length === 1 && isStandaloneEquation(seg.content));
 
-      // If an inline math segment is just a standalone number (e.g., $6$, $+5$, $-2$),
+      // If an inline math segment is just a standalone number or currency amount (e.g., $6$, $+5$, \$671.40),
       // render it in the host sans-serif font so prose numbers don't clash or add gaps before punctuation.
-      if (!isBlock && /^[+-]?\d+(?:\.\d+)?$/.test(seg.content.trim())) {
+      const trimmedSeg = seg.content.trim().replace(/^\\\$/, '$');
+      if (!isBlock && /^\$?[+-]?\d+(?:,\d{3})*(?:\.\d+)?$/.test(trimmedSeg)) {
         return (
           <span key={idx} className="font-semibold">
-            {seg.content.trim()}
+            {trimmedSeg}
           </span>
         );
       }
