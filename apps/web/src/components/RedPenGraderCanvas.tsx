@@ -102,12 +102,12 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
         </div>
       </div>
 
-      {/* 1-Click Sample Bar for Hackathon Judges */}
+      {/* 1-Click Interactive Sample Bar */}
       {onSelectSample && (
         <div className="bg-white/80 dark:bg-[#0b1120]/80 border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-3.5 flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8] flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
-            <span>Judge Demo Samples:</span>
+            <span>Interactive Demo Samples:</span>
           </span>
 
           <div className="flex flex-wrap gap-2">

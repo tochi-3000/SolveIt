@@ -310,7 +310,7 @@ export default function AuthProfileModal({
             <div className="relative flex py-1 items-center">
               <div className="flex-grow border-t border-[#e2e8f0] dark:border-[#1e293b]" />
               <span className="flex-shrink mx-3 text-[10px] font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase tracking-wider">
-                Or Instant Judge Access
+                Or 1-Click Demo Access
               </span>
               <div className="flex-grow border-t border-[#e2e8f0] dark:border-[#1e293b]" />
             </div>

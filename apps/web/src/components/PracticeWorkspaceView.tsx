@@ -11,7 +11,6 @@ import {
   getCorrectStudentNotebookFixture,
 } from '@/lib/fixtures/studentNotebookFixtures';
 import {
-  Award,
   Sparkles,
   CheckCircle2,
   XCircle,
@@ -420,26 +419,13 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
          ===================================================================== */}
       <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] p-6 sm:p-8 space-y-6 shadow-sm">
         {/* Header Bar */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-              <Award className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-              <span>Active Recall &amp; WAEC Rubric Drills</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
-              Practice &amp; Master What You Learned
-            </h2>
-            <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]">
-              Solve any math problem using our interactive <strong>Canvas</strong> or upload your physical paper notebook for automatic line-by-line red-pen grading with official WAEC <strong>[M1] Method</strong> and <strong>[A1] Accuracy</strong> marks.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>SymPy CAS &amp; Vision Active</span>
-            </span>
-          </div>
+        <div className="pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc]">
+            Practice &amp; Master What You Learned
+          </h2>
+          <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]">
+            Solve any math problem using our interactive <strong>Canvas</strong> or upload your physical paper notebook for automatic line-by-line red-pen grading with official WAEC <strong>[M1] Method</strong> and <strong>[A1] Accuracy</strong> marks.
+          </p>
         </div>
 
         {/* Recommended Twin Problem from "Learn" Page (if available) */}

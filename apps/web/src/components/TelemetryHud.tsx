@@ -45,7 +45,7 @@ export default function TelemetryHud({
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-[11px] font-mono font-semibold tracking-tight">
             <Terminal className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-            <span>JUDGE TELEMETRY HUD</span>
+            <span>NEURO-SYMBOLIC TELEMETRY HUD</span>
           </span>
 
           <span className="text-xs font-mono text-[#64748b] dark:text-[#94a3b8] hidden sm:inline">

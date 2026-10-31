@@ -8,8 +8,6 @@ import SamSegmentationCanvas from '@/components/SamSegmentationCanvas';
 import EquationVerificationModal from '@/components/EquationVerificationModal';
 import ScaffoldingSolutionView from '@/components/ScaffoldingSolutionView';
 import PracticeWorkspaceView from '@/components/PracticeWorkspaceView';
-import JudgeModeView from '@/components/JudgeModeView';
-import JudgeTelemetryDrawer from '@/components/JudgeTelemetryDrawer';
 import AuthProfileModal, { UserProfileData } from '@/components/AuthProfileModal';
 import { cropImageRegion } from '@/lib/image/crop';
 import { optimizeImage } from '@/lib/image/optimizer';
@@ -21,7 +19,6 @@ import {
 } from '@/lib/fixtures/studentNotebookFixtures';
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import {
-  SolveResponse,
   VerifyStepsResponse,
   SAMSegment,
   GradeHandwritingResponse,
@@ -54,11 +51,10 @@ import {
   Moon,
   Monitor,
   BookOpen,
-  Terminal,
   ArrowRight,
 } from 'lucide-react';
 
-type ActiveWorkspaceView = 'learn' | 'practice' | 'judge-mode' | 'settings';
+type ActiveWorkspaceView = 'learn' | 'practice' | 'settings';
 type ThemeMode = 'light' | 'dark' | 'system';
 
 interface AppPreferences {
@@ -128,12 +124,6 @@ export default function HomePage() {
   const [transcribeLoading, setTranscribeLoading] = useState<boolean>(false);
   const [museTestEquation, setMuseTestEquation] = useState<string>('3x^2 - 5x - 2 = 0');
 
-  // Deterministic Solver State (For Judge Mode Benchmark)
-  const [equationInput, setEquationInput] = useState<string>('3x^2 - 5x - 2 = 0');
-  const [solveResult, setSolveResult] = useState<SolveResponse | null>(null);
-  const [solveLoading, setSolveLoading] = useState<boolean>(false);
-  const [solveLatency, setSolveLatency] = useState<number | null>(null);
-
   // Practice Page (Step Verifier & Handwritten Grader) State
   const [originalProblem, setOriginalProblem] = useState<string>('3x^2 - 5x - 2 = 0');
   const [studentSteps, setStudentSteps] = useState<string[]>(['', '', '']);
@@ -159,9 +149,6 @@ export default function HomePage() {
     };
   });
   const [handwritingLoading, setHandwritingLoading] = useState<boolean>(false);
-
-  // Hackathon Judge Architecture Drawer State
-  const [isJudgeDrawerOpen, setIsJudgeDrawerOpen] = useState<boolean>(false);
 
   // Apply theme mode to <html> element and keep resolvedDark synchronized
   const applyDomTheme = useCallback((mode: ThemeMode) => {
@@ -288,8 +275,7 @@ export default function HomePage() {
   const segmentExamImage = async (imageUri: string, sampleId?: string) => {
     setSamLoading(true);
     setActiveExamImage(imageUri);
-    // Keep user on Judge Mode if they triggered segmentation there; otherwise open in Learn
-    setActiveView((prev) => (prev === 'judge-mode' ? 'judge-mode' : 'learn'));
+    setActiveView('learn');
     try {
       const res = await fetch('/api/math/segment', {
         method: 'POST',
@@ -406,9 +392,6 @@ export default function HomePage() {
       if (data.success) {
         setAiSolution(data.solution);
         setTelemetry(data.telemetry);
-        if (data.solution.extractedLatex) {
-          setEquationInput(data.solution.extractedLatex);
-        }
         if (userProfile) {
           const nextCredits =
             typeof data.remainingCredits === 'number'
@@ -421,33 +404,6 @@ export default function HomePage() {
       console.error('Multimodal solve failed:', e);
     } finally {
       setTranscribeLoading(false);
-    }
-  };
-
-  const handleSolve = async () => {
-    setSolveLoading(true);
-    const start = performance.now();
-    try {
-      const res = await fetch('/api/solve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ equation: equationInput, solveFor: 'x' }),
-      });
-      const data = await res.json();
-      setSolveResult(data);
-      setSolveLatency(Math.round(performance.now() - start));
-
-      if (userProfile) {
-        const nextCredits =
-          typeof data.remainingCredits === 'number'
-            ? data.remainingCredits
-            : Math.max(0, userProfile.credits - 1);
-        setUserProfile({ ...userProfile, credits: nextCredits });
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSolveLoading(false);
     }
   };
 
@@ -589,7 +545,6 @@ export default function HomePage() {
   const navItems: Array<{
     id: ActiveWorkspaceView;
     label: string;
-    headerTitle: string;
     badge?: string;
     icon: React.ComponentType<{ className?: string }>;
     description: string;
@@ -597,7 +552,6 @@ export default function HomePage() {
     {
       id: 'learn',
       label: 'Learn',
-      headerTitle: 'Learn with Professor SolvAm',
       badge: 'AI Tutor',
       icon: BookOpen,
       description: 'Step-by-step adaptive WAEC math breakdowns, voice tutor & concept diagrams',
@@ -605,29 +559,18 @@ export default function HomePage() {
     {
       id: 'practice',
       label: 'Practice',
-      headerTitle: 'Practice & WAEC Step Grader',
       badge: 'Drills',
       icon: Award,
       description: 'Practice twin problems and verify your steps line-by-line with SymPy',
     },
     {
-      id: 'judge-mode',
-      label: 'Judge Mode',
-      headerTitle: 'Hackathon Judge Evaluation Suite',
-      badge: 'Demo',
-      icon: Terminal,
-      description: 'All-in-one sandbox for SAM 3.1, Muse Spark 1.3, Red-Pen Grader & SymPy telemetry',
-    },
-    {
       id: 'settings',
       label: 'Settings',
-      headerTitle: 'Workspace & Pedagogy Settings',
       icon: Settings,
       description: 'Configure appearance, pedagogy level, Nigerian Pidgin mode & voice',
     },
   ];
 
-  const activeNavMeta = navItems.find((item) => item.id === activeView) || navItems[0];
   const isUserLoggedIn = Boolean(userProfile && !userProfile.is_guest);
 
   // ===========================================================================
@@ -637,28 +580,12 @@ export default function HomePage() {
     <div className="flex flex-col h-full justify-between select-none">
       {/* Top Section: Brand + Primary Navigation + Quick Study Shortcuts */}
       <div className="space-y-6">
-        {/* Brand Row */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-[8px] bg-[#2563eb] flex items-center justify-center text-white shadow-sm">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold tracking-tight text-[#0f172a] dark:text-[#f8fafc]">
-                  SolvAm
-                </span>
-                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px]">
-                  Copilot
-                </span>
-              </div>
-            </div>
-          </div>
-
+        {/* Mobile Menu Close Button */}
+        <div className="flex items-center justify-end lg:hidden px-1">
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden p-1.5 rounded-[8px] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] hover:bg-[#e0f0fe] dark:hover:bg-[#1e293b] transition"
+            className="p-1.5 rounded-[8px] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] hover:bg-[#e0f0fe] dark:hover:bg-[#1e293b] transition"
             aria-label="Close navigation menu"
           >
             <X className="w-4 h-4" />
@@ -904,30 +831,10 @@ export default function HomePage() {
               <Menu className="w-4 h-4" />
             </button>
 
-            <div className="hidden lg:flex items-center gap-1.5 pr-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-400/80" />
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
-            </div>
-
-            <div className="flex items-center gap-2.5 min-w-0">
-              <h1 className="text-sm sm:text-base font-bold text-[#0f172a] dark:text-[#f8fafc] truncate">
-                {activeNavMeta.headerTitle}
-              </h1>
-              <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-[11px] font-mono font-semibold">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    engineStatus === 'online'
-                      ? 'bg-[#2563eb] dark:bg-[#60a5fa]'
-                      : engineStatus === 'checking'
-                      ? 'bg-[#2563eb] animate-ping'
-                      : 'bg-rose-500'
-                  }`}
-                />
-                <span>SymPy {engineStatus.toUpperCase()}</span>
-                {engineLatency !== null && engineStatus === 'online' && (
-                  <span className="opacity-80">({engineLatency}ms)</span>
-                )}
+            {/* SolvAm Brand Header */}
+            <div className="flex items-center min-w-0">
+              <span className="text-lg font-bold tracking-tight text-[#0f172a] dark:text-[#f8fafc]">
+                SolvAm
               </span>
             </div>
           </div>
@@ -1031,11 +938,7 @@ export default function HomePage() {
                   <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-8 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
                       <div>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                          <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-                          <span>Interactive AI Math Tutor • Meta Muse Spark 1.3</span>
-                        </div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+                        <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc]">
                           Learn Any Math Problem Step-by-Step
                         </h2>
                         <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]">
@@ -1183,49 +1086,7 @@ export default function HomePage() {
               )}
 
               {/* =================================================================
-                  PAGE 3: JUDGE MODE (Dedicated Hackathon Evaluation Suite)
-                 ================================================================= */}
-              {activeView === 'judge-mode' && (
-                <JudgeModeView
-                  engineStatus={engineStatus}
-                  engineLatency={engineLatency}
-                  onOpenTelemetryDrawer={() => setIsJudgeDrawerOpen(true)}
-                  activeExamImage={activeExamImage}
-                  samSegments={samSegments}
-                  samLoading={samLoading}
-                  selectedSegmentId={selectedSegment?.id || null}
-                  onSelectSegment={handleSelectSegment}
-                  onLoadSampleSheet={handleLoadSampleSheet}
-                  onOpenUploadDialog={() => fileInputRef.current?.click()}
-                  onOpenCameraBridge={() => setIsCameraModalOpen(true)}
-                  onTriggerMusePidginDemo={() => {
-                    const targetEq = '3x^2 - 5x - 2 = 0';
-                    setMuseTestEquation(targetEq);
-                    runMultimodalSolve('mockBase64ImageData', targetEq, 'intermediate', 'pidgin');
-                  }}
-                  transcribeLoading={transcribeLoading}
-                  aiSolutionCard={renderAiSolutionCard()}
-                  telemetry={telemetry}
-                  handwritingResult={handwritingResult}
-                  handwritingLoading={handwritingLoading}
-                  onLoadHandwritingSample={handleLoadHandwritingSample}
-                  equationInput={equationInput}
-                  onChangeEquationInput={setEquationInput}
-                  solveResult={solveResult}
-                  solveLoading={solveLoading}
-                  solveLatency={solveLatency}
-                  onSolveDeterministic={handleSolve}
-                  onNavigateToPractice={(eq) => {
-                    setOriginalProblem(eq);
-                    setStudentSteps(['', '', '']);
-                    setVerifyResult(null);
-                    setActiveView('practice');
-                  }}
-                />
-              )}
-
-              {/* =================================================================
-                  PAGE 4: SETTINGS (Appearance, Pedagogy, Dialect & Voice)
+                  PAGE 3: SETTINGS (Appearance, Pedagogy, Dialect & Voice)
                  ================================================================= */}
               {activeView === 'settings' && (
                 <div className="space-y-6 animate-fadeIn">
@@ -1495,7 +1356,7 @@ export default function HomePage() {
                           <div className="pt-3 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-2.5">
                             <label className="flex items-center justify-between cursor-pointer">
                               <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
-                                Auto-Expand Judge Telemetry HUD on Solve
+                                Auto-Expand Telemetry HUD on Solve
                               </span>
                               <input
                                 type="checkbox"
@@ -1563,14 +1424,12 @@ export default function HomePage() {
 
             {/* FOOTER AT THE BOTTOM OF MAIN CONTENT AREA */}
             <div className="max-w-5xl w-full mx-auto pt-10 mt-10 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-4">
-              {activeView !== 'judge-mode' && (
-                <TelemetryHud
-                  telemetry={telemetry}
-                  engineStatus={engineStatus}
-                  engineLatency={engineLatency}
-                  defaultExpanded={autoExpandTelemetry}
-                />
-              )}
+              <TelemetryHud
+                telemetry={telemetry}
+                engineStatus={engineStatus}
+                engineLatency={engineLatency}
+                defaultExpanded={autoExpandTelemetry}
+              />
 
               <footer className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 text-xs text-[#64748b] dark:text-[#94a3b8]">
                 <div className="flex items-center gap-2">
@@ -1595,13 +1454,6 @@ export default function HomePage() {
                     className="hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
                   >
                     Practice
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigateToView('judge-mode')}
-                    className="hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
-                  >
-                    Judge Mode
                   </button>
                   <button
                     type="button"
@@ -1644,14 +1496,6 @@ export default function HomePage() {
         onClose={() => setIsAuthModalOpen(false)}
         userProfile={userProfile}
         onProfileUpdated={(updated) => setUserProfile(updated)}
-      />
-
-      {/* Hackathon Judge Architecture & Telemetry Drawer */}
-      <JudgeTelemetryDrawer
-        isOpen={isJudgeDrawerOpen}
-        onClose={() => setIsJudgeDrawerOpen(false)}
-        engineStatus={engineStatus}
-        engineLatency={engineLatency}
       />
     </div>
   );
