@@ -70,6 +70,8 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
   const [nextStepPreference, setNextStepPreference] = useState<'unselected' | 'practice' | 'example'>('unselected');
   const [generatedTwin, setGeneratedTwin] = useState<{ equation: string; latex: string } | null>(null);
   const [isGeneratingTwin, setIsGeneratingTwin] = useState<boolean>(false);
+  const [isBreakingDownTwin, setIsBreakingDownTwin] = useState<boolean>(false);
+  const [loadingCuratedExampleIndex, setLoadingCuratedExampleIndex] = useState<number | null>(null);
   const [twinError, setTwinError] = useState<string | null>(null);
 
   // Modals State
@@ -81,6 +83,8 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
     setNextStepPreference('unselected');
     setGeneratedTwin(null);
     setTwinError(null);
+    setIsBreakingDownTwin(false);
+    setLoadingCuratedExampleIndex(null);
   }, [solution.extractedLatex, solution.topic]);
 
   const fetchTwinProblem = async (forceRegenerate = false) => {
@@ -156,9 +160,15 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
   };
 
   const handleBreakdownTwinExample = async () => {
-    const twin = await fetchTwinProblem(false);
-    if (twin && onSeeAnotherExample) {
-      onSeeAnotherExample(twin.equation);
+    setIsBreakingDownTwin(true);
+    try {
+      // Force generation of a fresh twin problem so the user sees a brand new variation
+      const twin = await fetchTwinProblem(true);
+      if (twin && onSeeAnotherExample) {
+        onSeeAnotherExample(twin.equation);
+      }
+    } finally {
+      setIsBreakingDownTwin(false);
     }
   };
 
@@ -250,15 +260,15 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
   const isPidgin = languageMode === 'pidgin';
 
   return (
-    <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] p-6 sm:p-8 space-y-6 animate-fadeIn shadow-sm">
+    <section className="bg-surface border border-line rounded-2xl p-6 sm:p-8 space-y-6 animate-fadeIn shadow-card">
       {/* Header Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-[#e2e8f0] dark:border-[#1e293b]">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-            <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-brand-tint text-xs font-medium text-brand-ink">
+            <Sparkles className="w-3.5 h-3.5 text-brand-fg" />
             <span>Meta Muse Spark 1.3 Adaptive Breakdown</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+          <h2 className="text-xl sm:text-2xl font-semibold text-ink mt-2">
             {solution.topic}
           </h2>
           <MathDisplay
@@ -266,7 +276,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
               solution.discriminantSummary ||
               'Zero-hallucination solution verified by deterministic SymPy CAS.'
             }
-            className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]"
+            className="text-xs sm:text-sm text-ink-muted mt-1 max-w-2xl leading-[1.6]"
           />
         </div>
 
@@ -276,9 +286,9 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
           <button
             type="button"
             onClick={() => setIsDiagramModalOpen(true)}
-            className="px-3.5 py-2 rounded-[10px] bg-white dark:bg-[#0b1120] hover:bg-[#dbeafe] dark:hover:bg-[#1e3a8a]/50 text-[#0f172a] dark:text-[#f8fafc] text-xs font-semibold border border-[#e2e8f0] dark:border-[#1e293b] transition flex items-center gap-2 shadow-sm"
+            className="px-3.5 py-2 rounded-[10px] bg-surface hover:bg-brand-tint text-ink text-xs font-medium border border-line transition flex items-center gap-2 shadow-card"
           >
-            <ImageIcon className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+            <ImageIcon className="w-4 h-4 text-brand-fg" />
             <span>Concept Diagram</span>
           </button>
 
@@ -286,10 +296,10 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
           <button
             type="button"
             onClick={handlePlayFullSolution}
-            className={`px-3.5 py-2 rounded-[10px] text-xs font-semibold transition flex items-center gap-2 shadow-sm ${
+            className={`px-3.5 py-2 rounded-[10px] text-xs font-medium transition flex items-center gap-2 shadow-card ${
               isPlayingFullSolution
                 ? 'bg-rose-600 text-white animate-pulse'
-                : 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white'
+                : 'bg-brand hover:bg-brand-hover text-white'
             }`}
           >
             {isPlayingFullSolution ? (
@@ -306,13 +316,13 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
           </button>
 
           {/* Verified Answer Box */}
-          <div className="px-5 py-3.5 bg-white dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] text-center flex-shrink-0 min-w-[140px]">
-            <span className="text-[10px] text-[#1e3a8a] dark:text-[#93c5fd] uppercase font-semibold block tracking-wider">
+          <div className="px-5 py-3.5 bg-surface rounded-[12px] border border-line text-center flex-shrink-0 min-w-[140px]">
+            <span className="text-[10px] text-brand-ink uppercase font-semibold block tracking-wider">
               Verified Solution
             </span>
             <MathDisplay
               value={solution.finalAnswerLatex}
-              className="text-[#0f172a] dark:text-[#f8fafc] font-bold text-lg mt-1"
+              className="text-ink font-semibold text-lg mt-1"
             />
           </div>
         </div>
@@ -322,9 +332,9 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
       {pedagogicalLevel === 'beginner' && (
         <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-[10px] flex items-start gap-3">
           <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-[#0f172a] dark:text-[#f8fafc] space-y-0.5 leading-[1.6]">
+          <div className="text-xs text-ink space-y-0.5 leading-[1.6]">
             <span className="font-semibold text-emerald-700 dark:text-emerald-300">Foundation Mode Active:</span>
-            <p className="text-[#64748b] dark:text-[#94a3b8]">
+            <p className="text-ink-muted">
               {isPidgin
                 ? 'Every step dey explained in simple, direct language with zero skipped arithmetic.'
                 : 'Every micro-step is explained in plain, direct language with zero skipped arithmetic steps.'}
@@ -336,9 +346,9 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
       {pedagogicalLevel === 'intermediate' && (
         <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-[10px] flex items-start gap-3">
           <Award className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-[#0f172a] dark:text-[#f8fafc] space-y-0.5 leading-[1.6]">
+          <div className="text-xs text-ink space-y-0.5 leading-[1.6]">
             <span className="font-semibold text-amber-700 dark:text-amber-300">WAEC SSCE Prep Mode Active:</span>
-            <p className="text-[#64748b] dark:text-[#94a3b8]">
+            <p className="text-ink-muted">
               Structured according to official WAEC General Mathematics Paper 2 marking schemes.
               Pay close attention to <strong>[M1] Method Marks</strong> and <strong>[A1] Accuracy Marks</strong> to maximize partial credit.
             </p>
@@ -349,9 +359,9 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
       {pedagogicalLevel === 'expert' && (
         <div className="p-3.5 bg-purple-500/10 border border-purple-500/30 rounded-[10px] flex items-start gap-3">
           <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-[#0f172a] dark:text-[#f8fafc] space-y-0.5 leading-[1.6]">
+          <div className="text-xs text-ink space-y-0.5 leading-[1.6]">
             <span className="font-semibold text-purple-700 dark:text-purple-300">Distinction (A1) Socratic Mode:</span>
-            <p className="text-[#64748b] dark:text-[#94a3b8]">
+            <p className="text-ink-muted">
               Steps are concealed by default. Challenge yourself to solve each step before clicking &quot;Reveal Step&quot;.
               Target completion speed: <strong>&le; 3 minutes</strong> for a 5-mark question.
             </p>
@@ -370,15 +380,15 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
             <div key={st.stepNumber} className="py-6 first:pt-2 last:pb-2 space-y-4">
               <div className="flex items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start sm:items-center gap-3.5">
-                  <span className="px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-mono font-semibold flex-shrink-0">
+                  <span className="px-2.5 py-1 rounded-[8px] bg-brand-tint text-brand-ink text-xs font-mono font-semibold flex-shrink-0">
                     {formattedStep}
                   </span>
                   <div>
                     <MathDisplay
                       value={st.explanation}
-                      className="text-sm font-medium text-[#0f172a] dark:text-[#f8fafc] leading-[1.6]"
+                      className="text-sm font-medium text-ink leading-[1.6]"
                     />
-                    <span className="text-[11px] text-[#64748b] dark:text-[#94a3b8] font-medium block mt-0.5">
+                    <span className="text-[11px] text-ink-muted font-medium block mt-0.5">
                       {st.waecMark === 'M1'
                         ? 'Method Mark — Procedural algebra step'
                         : st.waecMark === 'A1'
@@ -396,7 +406,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                     className={`p-2 rounded-[8px] transition ${
                       isPlayingThisStep
                         ? 'bg-rose-600 text-white animate-pulse'
-                        : 'bg-white dark:bg-[#0b1120] hover:bg-[#dbeafe] dark:hover:bg-[#1e3a8a]/50 text-[#2563eb] dark:text-[#60a5fa] border border-[#e2e8f0] dark:border-[#1e293b]'
+                        : 'bg-surface hover:bg-brand-tint text-brand-fg border border-line'
                     }`}
                     title={isPlayingThisStep ? 'Stop Speech' : 'Listen to this step'}
                   >
@@ -411,8 +421,8 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                     }
                     className={`p-2 rounded-[8px] transition ${
                       voiceStepTarget?.stepNumber === st.stepNumber
-                        ? 'bg-[#2563eb] text-white shadow-sm ring-2 ring-[#2563eb]/30'
-                        : 'bg-white dark:bg-[#0b1120] hover:bg-[#dbeafe] dark:hover:bg-[#1e3a8a]/50 text-[#2563eb] dark:text-[#60a5fa] border border-[#e2e8f0] dark:border-[#1e293b]'
+                        ? 'bg-brand text-white shadow-card ring-2 ring-[#2563eb]/30'
+                        : 'bg-surface hover:bg-brand-tint text-brand-fg border border-line'
                     }`}
                     title={
                       voiceStepTarget?.stepNumber === st.stepNumber
@@ -424,7 +434,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                   </button>
 
                   {/* WAEC Marking Badge */}
-                  <span className="px-2.5 py-1 rounded-[8px] text-xs font-mono font-semibold bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd]">
+                  <span className="px-2.5 py-1 rounded-[8px] text-xs font-mono font-semibold bg-brand-tint text-brand-ink">
                     [{st.waecMark}]
                   </span>
 
@@ -433,7 +443,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                     <button
                       type="button"
                       onClick={() => toggleStepReveal(st.stepNumber)}
-                      className="px-2.5 py-1 rounded-[8px] bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-xs font-bold transition flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-[8px] bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-xs font-semibold transition flex items-center gap-1"
                     >
                       {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       <span>{isRevealed ? 'Hide' : 'Reveal'}</span>
@@ -444,19 +454,19 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
 
               {/* Math Display (Progressive Disclosure Guard) */}
               {isRevealed ? (
-                <div className="my-3 py-5 px-6 bg-white dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0]/80 dark:border-[#1e293b] text-center">
+                <div className="my-3 py-5 px-6 bg-surface rounded-[12px] border border-[#e2e8f0]/80 dark:border-[#1e293b] text-center">
                   <MathDisplay
                     value={st.mathLatex}
                     displayMode
-                    className="text-[#0f172a] dark:text-[#f8fafc] font-semibold"
+                    className="text-ink font-semibold"
                   />
                 </div>
               ) : (
                 <div
                   onClick={() => toggleStepReveal(st.stepNumber)}
-                  className="my-3 py-5 px-6 bg-white dark:bg-[#0b1120] rounded-[12px] border border-dashed border-purple-500/40 text-center cursor-pointer hover:bg-purple-500/5 transition group"
+                  className="my-3 py-5 px-6 bg-surface rounded-[12px] border border-dashed border-purple-500/40 text-center cursor-pointer hover:bg-purple-500/5 transition group"
                 >
-                  <span className="text-xs text-purple-700 dark:text-purple-300 font-bold group-hover:underline">
+                  <span className="text-xs text-purple-700 dark:text-purple-300 font-semibold group-hover:underline">
                     🔒 Socratic Challenge: Determine this milestone on paper, then click to reveal.
                   </span>
                 </div>
@@ -464,10 +474,10 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
 
               {/* Borderless Soft WAEC Examiner's Note Banner */}
               {showExaminerWarnings && st.commonPitfall && isRevealed && (
-                <div className="flex items-start gap-2.5 text-xs text-[#1e3a8a] dark:text-[#93c5fd] bg-[#dbeafe]/55 dark:bg-[#1e3a8a]/30 px-4 py-3 rounded-[8px] leading-[1.6]">
-                  <Info className="w-4 h-4 flex-shrink-0 text-[#2563eb] dark:text-[#60a5fa] mt-0.5" />
+                <div className="flex items-start gap-2.5 text-xs text-brand-ink bg-[#dbeafe]/55 dark:bg-[#1e3a8a]/30 px-4 py-3 rounded-[8px] leading-[1.6]">
+                  <Info className="w-4 h-4 flex-shrink-0 text-brand-fg mt-0.5" />
                   <span>
-                    <strong className="font-semibold text-[#0f172a] dark:text-[#f8fafc]">
+                    <strong className="font-semibold text-ink">
                       WAEC Examiner&apos;s Note:
                     </strong>{' '}
                     <MathDisplay value={st.commonPitfall} inline />
@@ -495,39 +505,39 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
       {/* Distinction 15-Second Verification Check (Expert Mode) */}
       {pedagogicalLevel === 'expert' && (
         <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-[12px] space-y-2">
-          <div className="flex items-center gap-2 text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             <span>15-Second Exam Room Verification Check:</span>
           </div>
-          <p className="text-xs text-[#64748b] dark:text-[#94a3b8]">
+          <p className="text-xs text-ink-muted">
             Substitute one verified root back into the original equation to prove LHS = RHS before turning in your exam booklet:
           </p>
-          <div className="p-2.5 bg-white dark:bg-[#0b1120] rounded-[8px] text-center border border-[#e2e8f0] dark:border-[#1e293b]">
+          <div className="p-2.5 bg-surface rounded-[8px] text-center border border-line">
             <MathDisplay
               value="3(2)^2 - 5(2) - 2 = 12 - 10 - 2 = 0 \quad (\text{Confirmed LHS} = \text{RHS})"
               displayMode
-              className="text-xs text-emerald-600 dark:text-emerald-400 font-bold"
+              className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold"
             />
           </div>
         </div>
       )}
 
       {/* Interactive Post-Breakdown Next-Steps Controller */}
-      <div className="pt-6 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-4">
+      <div className="pt-6 border-t border-line space-y-4">
         {nextStepPreference === 'unselected' && (
-          <div className="p-5 sm:p-6 bg-gradient-to-br from-white via-white to-blue-50/40 dark:from-[#0b1120] dark:via-[#0b1120] dark:to-[#1e293b]/50 rounded-[14px] border border-[#e2e8f0] dark:border-[#1e293b] shadow-sm space-y-4">
+          <div className="p-5 sm:p-6 bg-surface rounded-2xl border border-line shadow-card space-y-4">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold tracking-wide uppercase flex items-center gap-1">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold tracking-wide uppercase flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
                 Mastery Checkpoint
               </span>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-[#0f172a] dark:text-[#f8fafc]">
+              <h3 className="text-base sm:text-lg font-semibold text-ink">
                 Ready for what&apos;s next?
               </h3>
-              <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-0.5">
+              <p className="text-xs sm:text-sm text-ink-muted mt-0.5">
                 Choose whether you want to test your understanding with a practice problem or watch another worked example breakdown:
               </p>
             </div>
@@ -540,20 +550,20 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                 className="group text-left p-4 rounded-[12px] bg-white dark:bg-[#131d31] border-2 border-emerald-500/30 hover:border-emerald-500 hover:shadow-md transition-all duration-200 relative overflow-hidden"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="w-9 h-9 rounded-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                  <div className="w-9 h-9 rounded-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-semibold">
                     <Dumbbell className="w-5 h-5" />
                   </div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] uppercase font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                     Recommended
                   </span>
                 </div>
-                <h4 className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                <h4 className="text-sm font-semibold text-ink group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                   Practice with a Similar Problem
                 </h4>
-                <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 line-clamp-2">
+                <p className="text-xs text-ink-muted mt-1 line-clamp-2">
                   We&apos;ll generate a twin problem with matching structure so you can practice on paper or in the interactive workbook.
                 </p>
-                <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <div className="mt-3 flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                   <span>Generate practice problem</span>
                   <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -565,16 +575,16 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                 onClick={() => handleSelectPreference('example')}
                 className="group text-left p-4 rounded-[12px] bg-white dark:bg-[#131d31] border-2 border-blue-500/30 hover:border-blue-500 hover:shadow-md transition-all duration-200"
               >
-                <div className="w-9 h-9 rounded-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold mb-2">
+                <div className="w-9 h-9 rounded-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold mb-2">
                   <BookOpen className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <h4 className="text-sm font-semibold text-ink group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   See Another Example Breakdown
                 </h4>
-                <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 line-clamp-2">
+                <p className="text-xs text-ink-muted mt-1 line-clamp-2">
                   Watch Professor SolvAm break down a similar twin problem or explore a different WAEC examination question.
                 </p>
-                <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                <div className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400">
                   <span>Choose an example to learn</span>
                   <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -585,16 +595,16 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
 
         {/* PREFERENCE = 'practice': Show Generated Twin Practice Card */}
         {nextStepPreference === 'practice' && (
-          <div className="p-5 sm:p-6 bg-white dark:bg-[#0b1120] rounded-[14px] border border-emerald-500/30 shadow-sm space-y-4">
+          <div className="p-5 sm:p-6 bg-surface rounded-2xl border border-emerald-500/30 shadow-card space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
                 <Dumbbell className="w-4 h-4" />
                 <span>Parametric Twin Practice Problem (SymPy Verified)</span>
               </span>
               <button
                 type="button"
                 onClick={() => setNextStepPreference('unselected')}
-                className="text-xs text-[#64748b] hover:text-[#0f172a] dark:hover:text-[#f8fafc] underline"
+                className="text-xs text-ink-muted hover:text-ink underline"
               >
                 Change choice
               </button>
@@ -603,27 +613,27 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
             {isGeneratingTwin ? (
               <div className="py-8 flex flex-col items-center justify-center gap-2 text-center">
                 <RefreshCw className="w-6 h-6 text-emerald-500 animate-spin" />
-                <p className="text-xs font-medium text-[#64748b] dark:text-[#94a3b8]">
+                <p className="text-xs font-medium text-ink-muted">
                   Generating a similar twin problem with clean integer roots...
                 </p>
               </div>
             ) : generatedTwin ? (
               <div className="space-y-4">
-                <p className="text-xs text-[#64748b] dark:text-[#94a3b8]">
+                <p className="text-xs text-ink-muted">
                   Test your understanding with this matching twin problem. It shares the exact same methodology as the one you just learned:
                 </p>
-                <div className="py-4 px-4 bg-[#f8fafc] dark:bg-[#0f172a] rounded-[10px] border border-[#e2e8f0] dark:border-[#1e293b] text-center space-y-2">
+                <div className="py-4 px-4 bg-[#f8fafc] dark:bg-[#0f172a] rounded-[10px] border border-line text-center space-y-2">
                   {generatedTwin.equation &&
                     generatedTwin.equation !== generatedTwin.latex &&
                     /[a-zA-Z]{4,}/.test(generatedTwin.equation) && (
-                      <p className="text-xs sm:text-sm font-medium text-[#0f172a] dark:text-[#f8fafc] leading-relaxed">
+                      <p className="text-xs sm:text-sm font-medium text-ink leading-relaxed">
                         {generatedTwin.equation}
                       </p>
                     )}
                   <MathDisplay
                     value={generatedTwin.latex}
                     displayMode
-                    className="text-[#0f172a] dark:text-[#f8fafc] font-bold text-base sm:text-lg"
+                    className="text-ink font-semibold text-base sm:text-lg"
                   />
                 </div>
 
@@ -633,7 +643,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                       type="button"
                       onClick={() => fetchTwinProblem(true)}
                       disabled={isGeneratingTwin}
-                      className="px-3 py-2 rounded-[8px] bg-[#f1f5f9] dark:bg-[#1e293b] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] text-xs font-semibold text-[#475569] dark:text-[#cbd5e1] flex items-center gap-1.5 transition"
+                      className="px-3 py-2 rounded-[8px] bg-[#f1f5f9] dark:bg-[#1e293b] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] text-xs font-medium text-[#475569] dark:text-[#cbd5e1] flex items-center gap-1.5 transition"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingTwin ? 'animate-spin' : ''}`} />
                       <span>Generate Another Twin</span>
@@ -644,7 +654,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                     <button
                       type="button"
                       onClick={() => onSolveTwin(generatedTwin.equation)}
-                      className="px-4 py-2 rounded-[8px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+                      className="px-4 py-2 rounded-[8px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-card transition"
                     >
                       <span>Solve in Practice Workspace</span>
                       <ChevronRight className="w-4 h-4" />
@@ -658,7 +668,7 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                 <button
                   type="button"
                   onClick={() => fetchTwinProblem(true)}
-                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-[8px] text-xs font-semibold"
+                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-[8px] text-xs font-medium"
                 >
                   Retry Generation
                 </button>
@@ -669,48 +679,83 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
 
         {/* PREFERENCE = 'example': Show Example Selector Card */}
         {nextStepPreference === 'example' && (
-          <div className="p-5 sm:p-6 bg-white dark:bg-[#0b1120] rounded-[14px] border border-blue-500/30 shadow-sm space-y-4">
+          <div className="p-5 sm:p-6 bg-surface rounded-2xl border border-blue-500/30 shadow-card space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1.5 uppercase tracking-wider">
                 <BookOpen className="w-4 h-4" />
                 <span>See Another Example Breakdown</span>
               </span>
               <button
                 type="button"
                 onClick={() => setNextStepPreference('unselected')}
-                className="text-xs text-[#64748b] hover:text-[#0f172a] dark:hover:text-[#f8fafc] underline"
+                className="text-xs text-ink-muted hover:text-ink underline"
               >
                 Change choice
               </button>
             </div>
 
-            <p className="text-xs text-[#64748b] dark:text-[#94a3b8]">
+            <p className="text-xs text-ink-muted">
               Select whether you want Professor SolvAm to break down a fresh twin variation of this problem or jump to another WAEC syllabus topic:
             </p>
 
             <div className="space-y-2.5">
+              {twinError && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-[10px] text-xs text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                    <span>{twinError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBreakdownTwinExample}
+                    className="px-2.5 py-1 bg-rose-600 text-white rounded-[6px] text-[11px] font-medium hover:bg-rose-700 transition"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
               {/* Option 1: Break down a twin variation */}
               <button
                 type="button"
                 onClick={handleBreakdownTwinExample}
-                disabled={isGeneratingTwin}
-                className="w-full text-left p-3.5 rounded-[10px] bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 hover:border-blue-400 transition flex items-center justify-between gap-3 group"
+                disabled={isGeneratingTwin || isBreakingDownTwin}
+                className={`w-full text-left p-3.5 rounded-[10px] bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 hover:border-blue-400 transition flex items-center justify-between gap-3 group ${
+                  isBreakingDownTwin || isGeneratingTwin ? 'cursor-wait opacity-90 border-blue-400 ring-2 ring-blue-400/20' : ''
+                }`}
               >
                 <div>
-                  <div className="text-xs font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>Break down a similar twin variation ({solution.topic || 'Same Topic'})</span>
+                  <div className="text-xs font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                    {isBreakingDownTwin || isGeneratingTwin ? (
+                      <RefreshCw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-spin flex-shrink-0" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    )}
+                    <span>
+                      {isBreakingDownTwin || isGeneratingTwin
+                        ? `Generating new ${solution.topic || 'problem'} variation...`
+                        : `Break down a similar twin variation (${solution.topic || 'Same Topic'})`}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-[#64748b] dark:text-[#94a3b8] mt-0.5">
-                    Generates a brand new problem of this type and walks you through each step.
+                  <p className="text-[11px] text-ink-muted mt-0.5">
+                    {isBreakingDownTwin || isGeneratingTwin
+                      ? 'Synthesizing a new curriculum problem with clean numbers and preparing the line-by-line lesson...'
+                      : 'Generates a brand new problem of this type and walks you through each step.'}
                   </p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+                {isBreakingDownTwin || isGeneratingTwin ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-blue-600 text-white text-[11px] font-semibold animate-pulse shadow-sm flex-shrink-0">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Generating...</span>
+                  </span>
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+                )}
               </button>
 
               {/* Option 2: Curated WAEC Syllabus Examples */}
               <div className="pt-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] dark:text-[#64748b] block mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted/80 block mb-2">
                   Or pick from core syllabus examples:
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -718,14 +763,22 @@ export const ScaffoldingSolutionView: React.FC<ScaffoldingSolutionViewProps> = (
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => onSeeAnotherExample?.(ex.equation)}
-                      className="text-left p-2.5 rounded-[8px] bg-[#f8fafc] dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] hover:border-[#2563eb] hover:bg-white dark:hover:bg-[#131d31] transition text-xs flex items-center justify-between group"
+                      disabled={isGeneratingTwin || isBreakingDownTwin || loadingCuratedExampleIndex !== null}
+                      onClick={() => {
+                        setLoadingCuratedExampleIndex(idx);
+                        onSeeAnotherExample?.(ex.equation);
+                      }}
+                      className="text-left p-2.5 rounded-[8px] bg-[#f8fafc] dark:bg-[#0f172a] border border-line hover:border-[#2563eb] hover:bg-white dark:hover:bg-[#131d31] transition text-xs flex items-center justify-between group disabled:opacity-60 disabled:cursor-wait"
                     >
                       <div>
-                        <span className="font-semibold text-[#0f172a] dark:text-[#f8fafc] block">{ex.title}</span>
-                        <span className="text-[11px] font-mono text-[#64748b] dark:text-[#94a3b8]">{ex.equation}</span>
+                        <span className="font-semibold text-ink block">{ex.title}</span>
+                        <span className="text-[11px] font-mono text-ink-muted">{ex.equation}</span>
                       </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#2563eb] transition flex-shrink-0" />
+                      {loadingCuratedExampleIndex === idx ? (
+                        <RefreshCw className="w-3.5 h-3.5 text-[#2563eb] animate-spin flex-shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 text-ink-muted group-hover:text-[#2563eb] transition flex-shrink-0" />
+                      )}
                     </button>
                   ))}
                 </div>
