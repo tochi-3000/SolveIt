@@ -707,54 +707,6 @@ export default function HomePage() {
             );
           })}
         </nav>
-
-        {/* Quick Topic Shortcuts */}
-        <div className="pt-4 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-1.5">
-          <div className="flex items-center justify-between px-3.5 pb-1">
-            <span className="text-[11px] font-semibold text-[#64748b] dark:text-[#94a3b8]">
-              Quick Study Topics
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              const eq = 'x^2 + 5x + 6 = 0';
-              setMuseTestEquation(eq);
-              navigateToView('learn');
-              runMultimodalSolve('mockBase64ImageData', eq);
-            }}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[8px] text-xs font-medium text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 transition text-left"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-            <span className="truncate">Simple Factoring (x² + 5x + 6 = 0)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const eq = '3x^2 - 5x - 2 = 0';
-              setMuseTestEquation(eq);
-              navigateToView('learn');
-              runMultimodalSolve('mockBase64ImageData', eq);
-            }}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[8px] text-xs font-medium text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 transition text-left"
-          >
-            <span className="w-2 h-2 rounded-full bg-[#2563eb] flex-shrink-0" />
-            <span className="truncate">WAEC 2024 Q1(a) (3x² - 5x - 2 = 0)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              navigateToView('practice');
-            }}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[8px] text-xs font-medium text-[#64748b] dark:text-[#94a3b8] hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 transition text-left"
-          >
-            <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
-            <span className="truncate">Practice Workbook &amp; Grader</span>
-          </button>
-        </div>
       </div>
 
       {/* Bottom Section: Compact Pedagogy Status Card + Profile/Sign-In */}
