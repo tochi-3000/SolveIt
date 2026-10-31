@@ -25,12 +25,17 @@ When a student gets stuck on **Step 2** (for example, *"How did we get $a$ and $
 
 ## ⚡ 1-Minute Hackathon Judge Quickstart
 
-If you are evaluating SolvAm for the **Meta Global AI Developer Hackathon 2026**, open the dedicated **Judge Mode** page from the left sidebar (or use the top quickstart bar):
+If you are evaluating SolvAm for the **Meta Global AI Developer Hackathon 2026**:
 
-1. Open `http://localhost:3000` (or the deployed live URL) and navigate to **Learn**, **Practice**, or **Judge Mode** in the sidebar.
-2. **Learn (Line-by-Line Interactive Breakdown):** Pick any curated example (or type/scan your own equation), click **Explain Step-by-Step**, listen to synchronized **Read Aloud** narration, and click the microphone button on **any individual step** to ask **Professor SolvAm** a question about that exact line.
+> [!TIP]
+> **Use Our `Demo-Example` Folder to Test the App:**
+> We have provided sample exam papers and test math problems in the [`Demo-Example/`](./Demo-Example/) folder for instant evaluation:
+> - **Sample Exam Photos ([`Demo-Example/Images/`](./Demo-Example/Images/)):** Click the top **Upload** button (or **Scan**) and select [`20261031_151049 (1).jpg`](./Demo-Example/Images/20261031_151049%20(1).jpg) to test **Meta SAM 3.1** multi-equation page segmentation and perceptual OCR on real handwritten WAEC paper.
+> - **Sample Math Problems ([`Demo-Example/Math-Problem.md`](./Demo-Example/Math-Problem.md)):** Copy and paste verified curriculum problems (Arithmetic Progressions, Commercial Math & Simple Interest, Simultaneous Equations, Quadratics, Calculus) directly into the solver.
+
+1. Open `http://localhost:3000` (or your deployed URL) and navigate to **Learn** or **Practice** in the sidebar.
+2. **Learn (Line-by-Line Interactive Breakdown):** Pick any curated example, paste a question from `Demo-Example/Math-Problem.md`, or click **Upload** to load a paper photo from `Demo-Example/Images/`. Click **Explain Step-by-Step**, listen to synchronized **Read Aloud** narration, and click the microphone button on **any individual step** to ask **Professor SolvAm** a targeted question about that exact line.
 3. **Practice (Active Mastery & Red-Pen Grader):** Practice solving equations step-by-step with instant line-by-line symbolic verification, generate fresh parametric twins, or grade handwritten notebook work with `[M1]` / `[A1]` WAEC diagnostic badges.
-4. **Judge Mode (All-in-One Evaluation Hub):** One-click access to all 3 live demo scenarios (SAM 3.1 Exam Scanner, Circle Sector Geometry + Bilingual Audio, and Red-Pen Handwritten Grader) plus the live Python SymPy CAS Scratchpad and Telemetry HUD.
 
 ---
 
@@ -108,6 +113,9 @@ flowchart TB
 
 ```text
 SolveAm/
+├── Demo-Example/                    # Judge Evaluation Test Suite
+│   ├── Images/                      # Sample handwritten exam sheets for SAM 3.1 perception testing
+│   └── Math-Problem.md              # Curated WAEC syllabus problems ready to copy & paste
 ├── apps/
 │   └── web/                         # Next.js 15 App Router Frontend & Gateway
 │       ├── public/                  # PWA Manifest, SVG Favicons, App Icons
@@ -116,8 +124,7 @@ SolveAm/
 │       │   │   ├── api/math/        # segment, transcribe, grade-handwriting, diagram, voice
 │       │   │   ├── api/session/     # create, stream (Native SSE), upload
 │       │   │   └── api/user/        # auth, me (Clerk + Guest profile)
-│       │   ├── components/          # JudgeModeBar, JudgeTelemetryDrawer, RedPenGraderCanvas,
-│       │   │                        # SamSegmentationCanvas, ScaffoldingSolutionView, MathDisplay
+│       │   ├── components/          # RedPenGraderCanvas, SamSegmentationCanvas, ScaffoldingSolutionView, MathDisplay
 │       │   └── lib/                 # auth.ts, db.ts, symbolicClient.ts, audio/*, image/*, fixtures/*
 │       ├── .env.example             # Documented environment template
 │       └── package.json
@@ -266,5 +273,5 @@ npm run dev
 |---|---|---|
 | **Impact** | **30%** | Solves the 729,429 annual WAEC failure crisis. Replaces opaque numeric answers with official `[M1]` Method Marks and `[A1]` Accuracy Marks tailored to the West African curriculum. |
 | **Meta AI Tooling** | **25%** | Native parallel orchestration of **Meta SAM 3.1**, **Meta Muse Spark 1.3** agentic tool-loop, **Meta Muse Voice Transcribe**, and **Meta Muse Image** visualizer. |
-| **Demo & UX** | **25%** | Instant 1-Click Judge Mode bar with 3 live samples, zero-friction anonymous guest sessions (no login required to test), and real-time reverse QR camera bridge. |
+| **Demo & UX** | **25%** | Dedicated `Demo-Example/` evaluation suite (with real handwritten WAEC exam sheets and test problems), zero-friction anonymous guest sessions (no login required to test), and real-time reverse QR camera bridge. |
 | **Technical Depth** | **20%** | Neuro-symbolic design: decoupled neural perception (Meta Vision) and deterministic algebraic ground truth (Python SymPy CAS) with AST subtraction. |
