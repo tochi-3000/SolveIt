@@ -44,18 +44,18 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
     gradingResult.lines[0];
 
   return (
-    <div className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] p-6 sm:p-8 space-y-6 shadow-sm animate-fadeIn">
+    <div className="bg-surface border border-line rounded-2xl p-6 sm:p-8 space-y-6 shadow-card animate-fadeIn">
       {/* Top Header & Scoreboard Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-[#e2e8f0] dark:border-[#1e293b]">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-            <Award className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-brand-tint text-xs font-medium text-brand-ink">
+            <Award className="w-3.5 h-3.5 text-brand-fg" />
             <span>&quot;Red-Pen&quot; Handwritten Work Grader • WAEC Rubric Diagnostic</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+          <h2 className="text-xl sm:text-2xl font-semibold text-ink mt-2">
             Sequential Line-by-Line Equivalence Checker
           </h2>
-          <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]">
+          <p className="text-xs sm:text-sm text-ink-muted mt-1 max-w-2xl leading-[1.6]">
             Every handwritten line is evaluated against SymPy algebraic truth. Stamped with official WAEC Method Marks [M1] and Accuracy Marks [A1].
           </p>
         </div>
@@ -70,7 +70,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
             }`}
           >
             <span
-              className={`text-[10px] uppercase font-bold block tracking-wider ${
+              className={`text-[10px] uppercase font-semibold block tracking-wider ${
                 gradingResult.isFullyCorrect
                   ? 'text-emerald-700 dark:text-emerald-400'
                   : 'text-rose-700 dark:text-rose-400'
@@ -104,9 +104,9 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
 
       {/* 1-Click Interactive Sample Bar */}
       {onSelectSample && (
-        <div className="bg-white/80 dark:bg-[#0b1120]/80 border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-3.5 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8] flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+        <div className="bg-white/80 dark:bg-[#0b1120]/80 border border-line rounded-[12px] p-3.5 flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-brand-fg" />
             <span>Interactive Demo Samples:</span>
           </span>
 
@@ -114,7 +114,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
             <button
               type="button"
               onClick={() => onSelectSample('flawed_student_notebook_sign_error')}
-              className="px-3 py-1.5 rounded-[8px] bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-xs font-semibold transition flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-[8px] bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-xs font-medium transition flex items-center gap-1.5"
             >
               <XCircle className="w-3.5 h-3.5 text-rose-500" />
               <span>Sample A: Flawed Solution (Sign Mistake on Line 2)</span>
@@ -123,7 +123,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
             <button
               type="button"
               onClick={() => onSelectSample('correct_student_notebook_rigorous')}
-              className="px-3 py-1.5 rounded-[8px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-[8px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-medium transition flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
               <span>Sample B: Perfect Solution (5/5 Marks)</span>
@@ -136,7 +136,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Visual Notebook Page with Overlays (7 cols) */}
         <div className="lg:col-span-7 flex flex-col items-center justify-start">
-          <div className="relative inline-block max-w-full rounded-[14px] overflow-hidden border border-[#cbd5e1] dark:border-[#334155] shadow-lg select-none bg-[#FCFAF2]">
+          <div className="relative inline-block max-w-full rounded-2xl overflow-hidden border border-line-strong shadow-lg select-none bg-[#FCFAF2]">
             {/* The Notebook Image / SVG */}
             {gradingResult.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -197,7 +197,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
                   {/* Red-Pen Callout on Error Step */}
                   {isError && (
                     <div className="hidden sm:flex absolute -right-2 top-1/2 -translate-y-1/2 translate-x-full z-30 ml-2">
-                      <div className="bg-rose-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-[8px] shadow-xl border border-rose-400 whitespace-nowrap flex items-center gap-1.5">
+                      <div className="bg-rose-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-[8px] shadow-xl border border-rose-400 whitespace-nowrap flex items-center gap-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />
                         <span>Equivalence Broken on Line {line.lineIndex}</span>
                       </div>
@@ -212,7 +212,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
         {/* Right Column: Examiner Diagnostic Panel & Step-by-Step Breakdown (5 cols) */}
         <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
           <div className="space-y-3">
-            <span className="text-xs font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase tracking-wider block">
+            <span className="text-xs font-medium text-ink-muted uppercase tracking-wider block">
               Line-by-Line Examiner Analysis ({gradingResult.lines.length} Lines)
             </span>
 
@@ -230,14 +230,14 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
                     className={`w-full text-left p-3 rounded-[10px] border transition flex items-center justify-between gap-3 ${
                       isSelected
                         ? isError
-                          ? 'bg-rose-500/15 border-rose-500 text-rose-900 dark:text-rose-100 shadow-sm'
-                          : 'bg-emerald-500/15 border-emerald-500 text-emerald-900 dark:text-emerald-100 shadow-sm'
-                        : 'bg-white dark:bg-[#0b1120] border-[#e2e8f0] dark:border-[#1e293b] hover:bg-[#f1f5f9] dark:hover:bg-[#1e293b]'
+                          ? 'bg-rose-500/15 border-rose-500 text-rose-900 dark:text-rose-100 shadow-card'
+                          : 'bg-emerald-500/15 border-emerald-500 text-emerald-900 dark:text-emerald-100 shadow-card'
+                        : 'bg-surface border-line hover:bg-[#f1f5f9] dark:hover:bg-[#1e293b]'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
                       <span
-                        className={`w-6 h-6 rounded-[6px] font-mono text-xs font-bold flex items-center justify-center ${
+                        className={`w-6 h-6 rounded-[6px] font-mono text-xs font-semibold flex items-center justify-center ${
                           isError
                             ? 'bg-rose-600 text-white'
                             : 'bg-emerald-600 text-white'
@@ -245,14 +245,14 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
                       >
                         L{l.lineIndex}
                       </span>
-                      <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] line-clamp-1">
+                      <span className="text-xs font-medium text-ink line-clamp-1">
                         <MathDisplay value={l.latex || l.rawText} inline />
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <span
-                        className={`px-2 py-0.5 rounded-[6px] text-xs font-mono font-bold ${
+                        className={`px-2 py-0.5 rounded-[6px] text-xs font-mono font-semibold ${
                           isError
                             ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
                             : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
@@ -282,7 +282,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                    className={`text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 ${
                       selectedLine.isMathematicallyValid
                         ? 'text-emerald-700 dark:text-emerald-300'
                         : 'text-rose-700 dark:text-rose-300'
@@ -301,7 +301,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
                     )}
                   </span>
                   <span
-                    className={`px-2.5 py-0.5 rounded-[6px] text-xs font-mono font-bold ${
+                    className={`px-2.5 py-0.5 rounded-[6px] text-xs font-mono font-semibold ${
                       selectedLine.isMathematicallyValid
                         ? 'bg-emerald-600 text-white'
                         : 'bg-rose-600 text-white'
@@ -311,11 +311,11 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
                   </span>
                 </div>
 
-                <div className="p-2.5 bg-white dark:bg-[#0b1120] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b] text-center">
+                <div className="p-2.5 bg-surface rounded-[8px] border border-line text-center">
                   <MathDisplay
                     value={selectedLine.latex}
                     displayMode
-                    className="text-sm font-semibold text-[#0f172a] dark:text-[#f8fafc]"
+                    className="text-sm font-semibold text-ink"
                   />
                 </div>
 
@@ -326,16 +326,16 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
                       ? 'Step is mathematically equivalent to preceding line. Method mark retained.'
                       : 'Step violates mathematical equivalence.')
                   }
-                  className="text-xs text-[#0f172a] dark:text-[#f8fafc] leading-[1.6]"
+                  className="text-xs text-ink leading-[1.6]"
                 />
               </div>
             )}
           </div>
 
           {/* Pedagogical Summary & Practice Twin Trigger */}
-          <div className="p-4 bg-white dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] space-y-3">
-            <div className="flex items-start gap-2 text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
-              <Info className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa] flex-shrink-0 mt-0.5" />
+          <div className="p-4 bg-surface rounded-[12px] border border-line space-y-3">
+            <div className="flex items-start gap-2 text-xs text-ink-muted leading-[1.6]">
+              <Info className="w-4 h-4 text-brand-fg flex-shrink-0 mt-0.5" />
               <MathDisplay value={gradingResult.pedagogicalSummary} inline />
             </div>
 
@@ -343,7 +343,7 @@ export const RedPenGraderCanvas: React.FC<RedPenGraderCanvasProps> = ({
               <button
                 type="button"
                 onClick={() => onSolveTwin('2x^2 + 5x - 3 = 0')}
-                className="w-full py-2.5 px-4 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                className="w-full py-2.5 px-4 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-[8px] transition flex items-center justify-center gap-2 shadow-card active:scale-95"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Practice a Fresh Twin Problem on Paper</span>

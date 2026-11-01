@@ -1,5 +1,8 @@
 import type { Config } from "tailwindcss";
 
+// Semantic colour helper: tokens are RGB channels in globals.css so alpha modifiers work.
+const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 const config: Config = {
   darkMode: "class",
   content: [
@@ -17,22 +20,38 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        canvas: "var(--bg-canvas)",
-        sidebar: "var(--bg-sidebar)",
-        activeNav: "var(--bg-active-nav)",
-        corporate: {
-          primary: "#2563eb",
-          primaryHover: "#1d4ed8",
-          secondary: "var(--bg-secondary-pill)",
-          navy: "var(--text-accent-navy)",
-          deepNavy: "var(--text-primary)",
-          muted: "var(--text-muted)",
-          border: "var(--border-hairline)",
+        shell: token("shell"),
+        panel: token("panel"),
+        surface: {
+          DEFAULT: token("surface"),
+          subtle: token("surface-subtle"),
+          sunken: token("surface-sunken"),
+        },
+        sidebar: {
+          DEFAULT: token("sidebar"),
+          line: token("sidebar-line"),
+        },
+        line: {
+          DEFAULT: token("line"),
+          strong: token("line-strong"),
+        },
+        ink: {
+          DEFAULT: token("ink"),
+          soft: token("ink-soft"),
+          muted: token("ink-muted"),
+        },
+        brand: {
+          DEFAULT: token("brand"),
+          hover: token("brand-hover"),
+          fg: token("brand-fg"),
+          tint: token("brand-tint"),
+          ink: token("brand-ink"),
         },
       },
       boxShadow: {
-        'app-shell': 'var(--shadow-app-shell)',
-        'card-subtle': '0 4px 16px rgba(148, 163, 184, 0.06)',
+        card: "var(--shadow-card)",
+        float: "var(--shadow-float)",
+        "app-shell": "var(--shadow-app-shell)",
       },
     },
   },

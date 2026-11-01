@@ -137,7 +137,7 @@ function CaptureContent() {
       <div>
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 mb-2">
           <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
-          <span className="text-xs font-bold uppercase tracking-wider text-sky-700 font-mono">
+          <span className="text-xs font-semibold uppercase tracking-wider text-sky-700 font-mono">
             SolvAm Phone Lens
           </span>
         </div>
@@ -163,7 +163,7 @@ function CaptureContent() {
             {uploading && (
               <div className="absolute inset-0 bg-white/85 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                 <RefreshCw className="w-8 h-8 text-sky-600 animate-spin" />
-                <span className="text-sm font-bold text-slate-900">Beaming to Desktop...</span>
+                <span className="text-sm font-semibold text-slate-900">Beaming to Desktop...</span>
               </div>
             )}
             {success && (
@@ -181,7 +181,7 @@ function CaptureContent() {
             <div className="w-16 h-16 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center mb-4">
               <Camera className="w-8 h-8 text-sky-600" />
             </div>
-            <h3 className="font-bold text-slate-900">Snap WAEC Problem</h3>
+            <h3 className="font-semibold text-slate-900">Snap WAEC Problem</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-[220px]">
               Point your phone at textbook questions or your handwritten solution on paper.
             </p>
@@ -205,7 +205,7 @@ function CaptureContent() {
             type="button"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="w-full py-4 bg-sky-600 hover:bg-sky-500 active:scale-[0.98] text-white font-bold rounded-2xl transition flex items-center justify-center gap-3 shadow-lg shadow-sky-500/25 disabled:opacity-50 text-base"
+            className="w-full py-4 bg-sky-600 hover:bg-sky-500 active:scale-[0.98] text-white font-semibold rounded-2xl transition flex items-center justify-center gap-3 shadow-lg shadow-sky-500/25 disabled:opacity-50 text-base"
           >
             <Camera className="w-6 h-6" />
             <span>{photoPreview ? 'Retake Photo' : 'Open Camera & Snap'}</span>
@@ -218,7 +218,7 @@ function CaptureContent() {
               setSuccess(false);
               fileInputRef.current?.click();
             }}
-            className="w-full py-3.5 bg-white hover:bg-sky-50 border border-sky-200 text-sky-700 font-bold rounded-2xl transition flex items-center justify-center gap-2 shadow-sm"
+            className="w-full py-3.5 bg-white hover:bg-sky-50 border border-sky-200 text-sky-700 font-semibold rounded-2xl transition flex items-center justify-center gap-2 shadow-card"
           >
             <Camera className="w-5 h-5" />
             <span>Snap Another Problem</span>

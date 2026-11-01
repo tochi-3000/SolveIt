@@ -142,11 +142,11 @@ export default function AuthProfileModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0f172a]/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] max-w-md w-full p-6 sm:p-8 shadow-app-shell relative">
+      <div className="bg-surface border border-line rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-app-shell relative">
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-[8px] bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#e2e8f0]/60 dark:hover:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] transition"
+          className="absolute top-5 right-5 p-2 rounded-[8px] bg-surface-subtle hover:bg-[#e2e8f0]/60 dark:hover:bg-[#1e293b] text-ink-muted hover:text-ink transition"
           aria-label="Close"
         >
           <X className="w-4 h-4" />
@@ -156,47 +156,47 @@ export default function AuthProfileModal({
           /* LOGGED-IN USER PROFILE VIEW */
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-[12px] bg-[#2563eb] text-white font-bold text-base flex items-center justify-center">
+              <div className="w-12 h-12 rounded-[12px] bg-brand text-white font-semibold text-base flex items-center justify-center">
                 {getInitials(userProfile.name)}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-[#0f172a] dark:text-[#f8fafc] truncate">
+                  <h2 className="text-lg font-semibold text-ink truncate">
                     {userProfile.name}
                   </h2>
-                  <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px]">
+                  <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-brand-tint text-brand-ink rounded-[8px]">
                     Pro
                   </span>
                 </div>
-                <p className="text-xs text-[#64748b] dark:text-[#94a3b8] truncate mt-0.5">
+                <p className="text-xs text-ink-muted truncate mt-0.5">
                   {userProfile.email || 'Authenticated WAEC Candidate'}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3.5 bg-[#f8fafc] dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b]">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase">
-                  <Coins className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+              <div className="p-3.5 bg-surface-subtle rounded-[12px] border border-line">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted uppercase">
+                  <Coins className="w-3.5 h-3.5 text-brand-fg" />
                   <span>Solver Credits</span>
                 </div>
-                <div className="text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-1 font-mono">
+                <div className="text-2xl font-semibold text-ink mt-1 font-mono">
                   {userProfile.credits}
                 </div>
-                <span className="text-[10px] text-[#1e3a8a] dark:text-[#93c5fd] font-medium">
+                <span className="text-[10px] text-brand-ink font-medium">
                   Active Exam Quota
                 </span>
               </div>
 
-              <div className="p-3.5 bg-[#f8fafc] dark:bg-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b]">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+              <div className="p-3.5 bg-surface-subtle rounded-[12px] border border-line">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted uppercase">
+                  <ShieldCheck className="w-3.5 h-3.5 text-brand-fg" />
                   <span>Account Status</span>
                 </div>
-                <div className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+                <div className="text-sm font-semibold text-ink mt-2">
                   Verified Student
                 </div>
-                <span className="text-[10px] text-[#1e3a8a] dark:text-[#93c5fd] font-medium">
+                <span className="text-[10px] text-brand-ink font-medium">
                   Cloud Sync Active
                 </span>
               </div>
@@ -209,11 +209,11 @@ export default function AuthProfileModal({
               </div>
             )}
 
-            <div className="pt-3 border-t border-[#e2e8f0] dark:border-[#1e293b] flex items-center justify-between gap-3">
+            <div className="pt-3 border-t border-line flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] hover:bg-[#f8fafc] dark:hover:bg-[#0b1120] text-xs font-semibold transition"
+                className="px-4 py-2 rounded-[8px] border border-line text-ink-muted hover:text-ink hover:bg-[#f8fafc] dark:hover:bg-[#0b1120] text-xs font-medium transition"
               >
                 Keep Studying
               </button>
@@ -222,7 +222,7 @@ export default function AuthProfileModal({
                 type="button"
                 onClick={handleSignOut}
                 disabled={loading}
-                className="px-4 py-2 rounded-[8px] bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-xs font-semibold transition flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 rounded-[8px] bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-xs font-medium transition flex items-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -237,14 +237,14 @@ export default function AuthProfileModal({
           /* UNAUTHENTICATED SIGN-IN VIEW */
           <div className="space-y-5">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-semibold mb-2">
-                <UserCheck className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-brand-tint text-brand-ink text-xs font-medium mb-2">
+                <UserCheck className="w-3.5 h-3.5 text-brand-fg" />
                 <span>Student Account</span>
               </div>
-              <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#f8fafc]">
+              <h2 className="text-xl font-semibold text-ink">
                 Sign In to SolvAm
               </h2>
-              <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
+              <p className="text-xs text-ink-muted mt-1 leading-[1.6]">
                 Save your WAEC scan history, sync custom pedagogy settings, and unlock 100 Pro solver credits.
               </p>
             </div>
@@ -258,35 +258,35 @@ export default function AuthProfileModal({
 
             <form onSubmit={handleSignInSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1">
+                <label className="block text-xs font-medium text-ink mb-1">
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-[#64748b] dark:text-[#94a3b8] absolute left-3.5 top-3" />
+                  <User className="w-4 h-4 text-ink-muted absolute left-3.5 top-3" />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Chinedu Okafor"
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] text-sm text-[#0f172a] dark:text-[#f8fafc] focus:bg-white dark:focus:bg-[#0b1120] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                    className="w-full pl-10 pr-4 py-2.5 bg-surface-subtle border border-line rounded-[8px] text-sm text-ink focus:bg-white dark:focus:bg-[#0b1120] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1">
+                <label className="block text-xs font-medium text-ink mb-1">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-[#64748b] dark:text-[#94a3b8] absolute left-3.5 top-3" />
+                  <Mail className="w-4 h-4 text-ink-muted absolute left-3.5 top-3" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="student@school.edu.ng"
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] text-sm text-[#0f172a] dark:text-[#f8fafc] focus:bg-white dark:focus:bg-[#0b1120] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
+                    className="w-full pl-10 pr-4 py-2.5 bg-surface-subtle border border-line rounded-[8px] text-sm text-ink focus:bg-white dark:focus:bg-[#0b1120] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
                   />
                 </div>
               </div>
@@ -294,7 +294,7 @@ export default function AuthProfileModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-xs rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                className="w-full py-2.5 bg-brand hover:bg-brand-hover text-white font-semibold text-xs rounded-[8px] transition flex items-center justify-center gap-2 shadow-card disabled:opacity-50"
               >
                 {loading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -308,20 +308,20 @@ export default function AuthProfileModal({
             </form>
 
             <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-[#e2e8f0] dark:border-[#1e293b]" />
-              <span className="flex-shrink mx-3 text-[10px] font-semibold text-[#64748b] dark:text-[#94a3b8] uppercase tracking-wider">
+              <div className="flex-grow border-t border-line" />
+              <span className="flex-shrink mx-3 text-[10px] font-semibold text-ink-muted uppercase tracking-wider">
                 Or 1-Click Demo Access
               </span>
-              <div className="flex-grow border-t border-[#e2e8f0] dark:border-[#1e293b]" />
+              <div className="flex-grow border-t border-line" />
             </div>
 
             <button
               type="button"
               onClick={handleQuickDemoSignIn}
               disabled={loading}
-              className="w-full py-2.5 bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] font-semibold text-xs rounded-[8px] transition flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-brand-tint hover:bg-brand/15 text-brand-ink font-semibold text-xs rounded-[8px] transition flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+              <Sparkles className="w-3.5 h-3.5 text-brand-fg" />
               <span>1-Click Demo Student Login (Chinedu Okafor)</span>
             </button>
           </div>

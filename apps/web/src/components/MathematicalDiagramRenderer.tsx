@@ -74,7 +74,7 @@ export const MathematicalDiagramRenderer: React.FC<MathematicalDiagramRendererPr
 
         {/* Header */}
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
             <Sparkles className="w-4 h-4" />
             <span>Multimodal Concept Visualizer • {modelLabel}</span>
           </div>

@@ -45,7 +45,6 @@ import {
   Settings,
   Menu,
   X,
-  Sliders,
   Check,
   Sun,
   Moon,
@@ -577,23 +576,28 @@ export default function HomePage() {
   // SIDEBAR CONTENT
   // ===========================================================================
   const renderSidebarContent = () => (
-    <div className="flex flex-col h-full justify-between select-none">
-      {/* Top Section: Brand + Primary Navigation + Quick Study Shortcuts */}
-      <div className="space-y-6">
+    <div className="flex flex-col h-full justify-between gap-6 select-none overflow-y-auto">
+      {/* Top Section: Primary Navigation */}
+      <div className="space-y-3">
         {/* Mobile Menu Close Button */}
-        <div className="flex items-center justify-end lg:hidden px-1">
+        <div className="flex items-center justify-end lg:hidden">
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(false)}
-            className="p-1.5 rounded-[8px] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] hover:bg-[#e0f0fe] dark:hover:bg-[#1e293b] transition"
+            className="p-2 rounded-[10px] text-ink-muted hover:text-ink hover:bg-white/70 dark:hover:bg-surface transition-colors"
             aria-label="Close navigation menu"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Subtle Section Eyebrow */}
+        <div className="px-3 pt-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-brand-ink/60">
+          Workspace
+        </div>
+
         {/* Primary Workspaces Navigation */}
-        <nav className="space-y-1">
+        <nav aria-label="Primary" className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
@@ -602,29 +606,28 @@ export default function HomePage() {
                 key={item.id}
                 type="button"
                 onClick={() => navigateToView(item.id)}
-                className={`w-full group flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-[8px] text-left text-[13px] transition-all ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`group w-full flex items-center justify-between gap-2 h-10 px-3 rounded-[11px] text-left text-[13.5px] transition-all ${
                   isActive
-                    ? 'bg-[#e0f0fe] dark:bg-[#1e293b] text-[#0f172a] dark:text-[#f8fafc] font-semibold'
-                    : 'text-[#64748b] dark:text-[#94a3b8] font-medium hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 hover:text-[#2563eb] dark:hover:text-[#60a5fa]'
+                    ? 'bg-white dark:bg-surface text-ink font-semibold shadow-[0_2px_6px_-1px_rgba(11,26,51,0.08),0_0_0_1px_rgba(37,99,235,0.12)] dark:shadow-[0_0_0_1px_rgb(var(--sidebar-line))]'
+                    : 'text-ink-soft font-medium hover:bg-white/60 dark:hover:bg-surface/60 hover:text-ink'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <span className="flex items-center gap-3 min-w-0">
                   <Icon
-                    className={`w-4 h-4 flex-shrink-0 transition-colors ${
-                      isActive
-                        ? 'text-[#2563eb] dark:text-[#60a5fa]'
-                        : 'text-[#64748b] dark:text-[#94a3b8] group-hover:text-[#2563eb] dark:group-hover:text-[#60a5fa]'
+                    className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
+                      isActive ? 'text-brand-fg' : 'text-ink-muted group-hover:text-brand-fg'
                     }`}
                   />
                   <span className="truncate">{item.label}</span>
-                </div>
+                </span>
 
                 {item.badge && (
                   <span
-                    className={`px-2 py-0.5 text-[10px] font-mono font-semibold rounded-[8px] flex-shrink-0 ${
+                    className={`px-2 py-0.5 text-[10.5px] font-medium rounded-md flex-shrink-0 transition-colors ${
                       isActive
-                        ? 'bg-[#dbeafe] dark:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd]'
-                        : 'bg-white/80 dark:bg-[#0f172a] text-[#64748b] dark:text-[#94a3b8] group-hover:bg-[#dbeafe] dark:group-hover:bg-[#1e3a8a]/50 group-hover:text-[#1e3a8a] dark:group-hover:text-[#93c5fd]'
+                        ? 'bg-brand-tint text-brand-ink'
+                        : 'bg-white/75 dark:bg-surface-sunken text-ink-soft ring-1 ring-inset ring-sidebar-line/70'
                     }`}
                   >
                     {item.badge}
@@ -637,64 +640,71 @@ export default function HomePage() {
       </div>
 
       {/* Bottom Section: Compact Pedagogy Status Card + Profile/Sign-In */}
-      <div className="space-y-3 pt-4 mt-6">
-        <div className="p-3.5 rounded-[12px] bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] space-y-2.5">
+      <div className="space-y-3">
+        <div className="p-3.5 rounded-[16px] bg-white/90 dark:bg-surface/95 backdrop-blur-sm border border-white dark:border-sidebar-line shadow-[0_2px_10px_-3px_rgba(11,26,51,0.06)] space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[#0f172a] dark:text-[#f8fafc]">
-              Active Tutor Mode
+            <span className="flex items-center gap-2 text-[12px] font-semibold text-ink">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              <span>Active Tutor Mode</span>
             </span>
             <button
               type="button"
               onClick={() => navigateToView('settings')}
-              className="text-[11px] font-semibold text-[#2563eb] dark:text-[#60a5fa] hover:underline"
+              className="text-[11.5px] font-medium text-brand-fg hover:underline underline-offset-2"
             >
               Configure
             </button>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[10px] font-semibold text-[#1e3a8a] dark:text-[#93c5fd] capitalize">
+            <span className="px-2 py-0.5 rounded-md bg-brand-tint text-[11px] font-medium text-brand-ink capitalize">
               {pedagogicalLevel}
             </span>
-            <span className="px-2 py-0.5 rounded-[8px] bg-[#f0f5fa] dark:bg-[#1e293b] text-[10px] font-semibold text-[#0f172a] dark:text-[#f8fafc]">
+            <span className="px-2 py-0.5 rounded-md bg-surface-sunken text-[11px] font-medium text-ink-soft">
               {languageMode === 'pidgin' ? 'Pidgin 🇳🇬' : 'Standard EN'}
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-[#64748b] dark:text-[#94a3b8] pt-2 border-t border-[#e2e8f0] dark:border-[#1e293b]">
+          <div className="flex items-center justify-between text-[12px] text-ink-muted pt-2.5 border-t border-line">
             <span className="flex items-center gap-1.5">
-              <Coins className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+              <Coins className="w-3.5 h-3.5 text-brand-fg" />
               <span>Credits</span>
             </span>
-            <span className="font-mono font-semibold text-[#0f172a] dark:text-[#f8fafc]">
+            <span className="font-semibold tabular-nums text-ink">
               {userProfile ? userProfile.credits : 50}
             </span>
           </div>
         </div>
 
         {/* Isolated Bottom Profile / Sign-In Control */}
-        <div className="pt-2 border-t border-[#e2e8f0] dark:border-[#1e293b]">
+        <div className="pt-3 border-t border-sidebar-line">
           {isUserLoggedIn && userProfile ? (
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => setIsAuthModalOpen(true)}
-              className="cursor-pointer group p-2.5 rounded-[12px] hover:bg-[#e0f0fe]/60 dark:hover:bg-[#1e293b] transition flex items-center justify-between gap-2.5"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsAuthModalOpen(true);
+                }
+              }}
+              className="cursor-pointer group p-2 -mx-1 rounded-[12px] hover:bg-white/60 dark:hover:bg-surface/60 transition-colors flex items-center justify-between gap-2.5"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-[#dbeafe] dark:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-white dark:bg-surface ring-1 ring-sidebar-line text-brand-ink font-semibold text-[12px] flex items-center justify-center flex-shrink-0 shadow-card">
                   {getInitials(userProfile.name)}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-[#0f172a] dark:text-[#f8fafc] truncate">
-                    {userProfile.name}
-                  </div>
-                  <div className="text-[11px] text-[#64748b] dark:text-[#94a3b8] truncate">
+                  <div className="text-[13px] font-semibold text-ink truncate">{userProfile.name}</div>
+                  <div className="text-[11.5px] text-ink-muted truncate">
                     {userProfile.email || 'candidate@waec.ng'}
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="px-2 py-0.5 text-[10px] font-semibold bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px]">
+                <span className="px-2 py-0.5 text-[10.5px] font-medium bg-white dark:bg-surface text-brand-ink ring-1 ring-sidebar-line rounded-md">
                   Pro
                 </span>
                 {userProfile.clerkEnabled && (
@@ -705,22 +715,18 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] font-bold text-xs flex items-center justify-center flex-shrink-0">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2 px-0.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-white dark:bg-surface ring-1 ring-sidebar-line text-brand-ink font-semibold text-[12px] flex items-center justify-center flex-shrink-0 shadow-card">
                     GS
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] truncate">
-                      Guest Student
-                    </div>
-                    <div className="text-[10px] text-[#64748b] dark:text-[#94a3b8] truncate">
-                      Unauthenticated
-                    </div>
+                    <div className="text-[13px] font-semibold text-ink truncate">Guest Student</div>
+                    <div className="text-[11.5px] text-ink-muted truncate">Unauthenticated</div>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] text-[10px] font-semibold">
+                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-surface ring-1 ring-sidebar-line text-brand-ink text-[10.5px] font-medium">
                   Free
                 </span>
               </div>
@@ -730,7 +736,7 @@ export default function HomePage() {
                   <SignInButton mode="modal">
                     <button
                       type="button"
-                      className="w-full py-2 px-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm"
+                      className="w-full h-9 px-3 bg-ink hover:bg-ink/90 dark:bg-brand dark:hover:bg-brand-hover text-white text-[13px] font-medium rounded-[10px] transition-colors flex items-center justify-center gap-2 shadow-card"
                     >
                       <LogIn className="w-3.5 h-3.5" />
                       <span>Sign In</span>
@@ -744,7 +750,7 @@ export default function HomePage() {
                     setIsMobileMenuOpen(false);
                     setIsAuthModalOpen(true);
                   }}
-                  className="w-full py-2 px-3 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-[8px] transition flex items-center justify-center gap-2 shadow-sm"
+                  className="w-full h-9 px-3 bg-ink hover:bg-ink/90 dark:bg-brand dark:hover:bg-brand-hover text-white text-[13px] font-medium rounded-[10px] transition-colors flex items-center justify-center gap-2 shadow-card"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>Sign In</span>
@@ -807,7 +813,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7fa] dark:bg-[#070b14] p-2 sm:p-5 lg:p-7 transition-colors">
+    <div className="min-h-screen bg-shell transition-colors">
       {/* Hidden Global File Input */}
       <input
         type="file"
@@ -818,44 +824,42 @@ export default function HomePage() {
       />
 
       {/* APP CONTAINER */}
-      <div className="max-w-[1440px] mx-auto bg-white dark:bg-[#0f172a] rounded-[16px] border border-[#e2e8f0] dark:border-[#1e293b] shadow-app-shell overflow-hidden min-h-[calc(100vh-3.5rem)] flex flex-col transition-colors">
-        {/* TOP WINDOW / APPLICATION HEADER BAR */}
-        <header className="bg-white dark:bg-[#0f172a] border-b border-[#e2e8f0] dark:border-[#1e293b] px-5 sm:px-8 py-3.5 flex items-center justify-between gap-4 transition-colors">
-          <div className="flex items-center gap-4 min-w-0">
+      <div className="max-w-[1680px] mx-auto min-h-screen flex flex-col">
+        {/* TOP APPLICATION HEADER BAR */}
+        <header className="sticky top-0 z-30 h-16 flex-shrink-0 bg-shell/90 backdrop-blur-md border-b border-line flex items-center justify-between gap-4 px-4 sm:px-6 lg:px-6 transition-colors">
+          {/* Left cell shares the sidebar's width so the wordmark aligns with the nav icons below it */}
+          <div className="flex items-center gap-2 min-w-0 lg:w-64">
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] hover:bg-[#bfdbfe] transition flex-shrink-0"
+              className="lg:hidden p-2 rounded-[10px] text-ink-soft hover:text-ink hover:bg-surface-sunken transition-colors flex-shrink-0"
               aria-label="Open navigation menu"
             >
-              <Menu className="w-4 h-4" />
+              <Menu className="w-[18px] h-[18px]" />
             </button>
 
-            {/* SolvAm Brand Header */}
-            <div className="flex items-center min-w-0">
-              <span className="text-lg font-bold tracking-tight text-[#0f172a] dark:text-[#f8fafc]">
-                SolvAm
-              </span>
-            </div>
+            <span className="font-display text-[19px] font-bold tracking-tight text-ink lg:pl-3">
+              SolvAm
+            </span>
           </div>
 
           {/* Right: Theme Switcher + Upload & Scan Controls */}
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={handleToggleTheme}
-              className="px-3 py-2 rounded-[8px] bg-[#f0f5fa] dark:bg-[#1e293b] hover:bg-[#dbeafe] dark:hover:bg-[#334155] text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-semibold transition flex items-center gap-1.5"
+              className="h-9 px-3 rounded-[10px] bg-surface hover:bg-surface-subtle text-ink-soft hover:text-ink border border-line hover:border-line-strong shadow-card text-[13px] font-medium transition-colors flex items-center gap-1.5"
               title={resolvedDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label={resolvedDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {resolvedDark ? (
                 <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <Sun className="w-4 h-4 text-amber-400" />
                   <span className="hidden sm:inline">Light</span>
                 </>
               ) : (
                 <>
-                  <Moon className="w-3.5 h-3.5 text-[#2563eb]" />
+                  <Moon className="w-4 h-4 text-brand-fg" />
                   <span className="hidden sm:inline">Dark</span>
                 </>
               )}
@@ -864,45 +868,50 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-3.5 py-2 rounded-[8px] bg-white dark:bg-[#0b1120] hover:bg-[#f0f5fa] dark:hover:bg-[#1e293b] text-[#0f172a] dark:text-[#f8fafc] border border-[#e2e8f0] dark:border-[#1e293b] text-xs font-semibold transition flex items-center gap-2"
+              className="h-9 px-3.5 rounded-[10px] bg-surface hover:bg-surface-subtle text-ink border border-line hover:border-line-strong shadow-card text-[13px] font-medium transition-colors flex items-center gap-2"
             >
-              <Upload className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+              <Upload className="w-4 h-4 text-brand-fg" />
               <span>Upload</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsCameraModalOpen(true)}
-              className="px-4 py-2 rounded-[8px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold transition flex items-center gap-2 shadow-sm"
+              className="h-9 px-4 rounded-[10px] bg-brand hover:bg-brand-hover text-white text-[13px] font-medium transition-colors flex items-center gap-2 shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_1px_2px_rgb(37_99_235/0.35)]"
             >
-              <Scan className="w-3.5 h-3.5" />
+              <Scan className="w-4 h-4" />
               <span>Scan</span>
             </button>
           </div>
         </header>
 
-        {/* BODY SPLIT: Left Sidebar + Right Main Content Panel */}
-        <div className="flex-1 flex flex-col lg:flex-row">
+        {/* BODY SPLIT: Floating Light-Blue Sidebar + White Main Content Panel */}
+        <div className="flex-1 flex flex-col lg:flex-row lg:gap-4 lg:p-3.5">
           {/* DESKTOP LEFT SIDEBAR */}
-          <aside className="hidden lg:flex lg:w-[272px] lg:flex-shrink-0 bg-[#f0f5fa] dark:bg-[#0b1120] border-r border-[#e2e8f0] dark:border-[#1e293b] p-5 flex-col justify-between transition-colors">
+          <aside className="hidden lg:flex lg:w-[264px] lg:flex-shrink-0 lg:sticky lg:top-[4.875rem] lg:self-start lg:h-[calc(100vh-5.75rem)] flex-col rounded-[20px] bg-sidebar border border-sidebar-line/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_2px_10px_-4px_rgba(30,64,175,0.06)] p-3.5 transition-colors">
             {renderSidebarContent()}
           </aside>
 
           {/* MOBILE HAMBURGER DRAWER */}
           {isMobileMenuOpen && (
-            <div className="fixed inset-0 z-50 lg:hidden flex">
+            <div
+              className="fixed inset-0 z-50 lg:hidden flex"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation menu"
+            >
               <div
-                className="fixed inset-0 bg-[#0f172a]/50 backdrop-blur-sm animate-fadeIn"
+                className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm animate-fadeIn"
                 onClick={() => setIsMobileMenuOpen(false)}
               />
-              <div className="relative z-10 w-72 max-w-[85vw] bg-[#f0f5fa] dark:bg-[#0b1120] h-full p-5 shadow-2xl border-r border-[#e2e8f0] dark:border-[#1e293b] flex flex-col justify-between animate-fadeIn">
+              <div className="relative z-10 w-72 max-w-[85vw] m-2 h-[calc(100%-1rem)] rounded-[20px] bg-sidebar border border-sidebar-line/80 p-3.5 shadow-float flex flex-col animate-fadeIn">
                 {renderSidebarContent()}
               </div>
             </div>
           )}
 
           {/* MAIN WORKSPACE CONTENT PANEL */}
-          <main className="flex-1 bg-[#ffffff] dark:bg-[#0f172a] p-6 sm:p-8 lg:p-10 flex flex-col justify-between min-w-0 transition-colors">
+          <main className="flex-1 min-w-0 bg-panel px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-8 flex flex-col justify-between transition-colors">
             <div className="max-w-5xl w-full mx-auto space-y-8">
               {/* =================================================================
                   PAGE 1: LEARN (Standalone Adaptive AI Tutor Page)
@@ -912,15 +921,15 @@ export default function HomePage() {
                   {/* If user scanned or uploaded an exam sheet via the top header, display SAM 3.1 segmentation here */}
                   {activeExamImage && (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between px-4 py-2.5 bg-[#dbeafe]/60 dark:bg-[#1e3a8a]/30 rounded-[10px] border border-[#bfdbfe] dark:border-[#1e3a8a]">
-                        <span className="text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd] flex items-center gap-2">
-                          <Scan className="w-4 h-4 text-[#2563eb]" />
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-brand-tint/70 rounded-[12px] border border-brand/20">
+                        <span className="text-xs font-medium text-brand-ink flex items-center gap-2">
+                          <Scan className="w-4 h-4 text-brand-fg" />
                           <span>Scanned Exam Sheet Active — Tap any highlighted equation to learn its step-by-step solution</span>
                         </span>
                         <button
                           type="button"
                           onClick={() => setActiveExamImage(null)}
-                          className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+                          className="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline"
                         >
                           Close Sheet
                         </button>
@@ -935,112 +944,126 @@ export default function HomePage() {
                     </div>
                   )}
 
-                  <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-8 space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-                      <div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                  <section className="space-y-7">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5 pb-6 border-b border-line">
+                      <div className="space-y-1.5">
+                        <h2 className="text-[24px] sm:text-[26px] leading-tight font-semibold text-ink">
                           Learn Any Math Problem Step-by-Step
                         </h2>
-                        <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]">
-                          Enter an equation below (or scan your paper using the top-right <strong>Scan</strong> button) to get a crystal-clear, zero-hallucination breakdown tailored to your learning level and dialect.
+                        <p className="text-sm text-ink-muted max-w-2xl leading-relaxed">
+                          Enter an equation below (or scan your paper using the top-right <strong className="font-medium text-ink-soft">Scan</strong> button) to get a crystal-clear, zero-hallucination breakdown tailored to your learning level and dialect.
                         </p>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => navigateToView('practice')}
-                        className="px-3.5 py-2 rounded-[8px] bg-white dark:bg-[#0f172a] hover:bg-[#dbeafe] dark:hover:bg-[#1e3a8a]/50 text-[#1e3a8a] dark:text-[#93c5fd] border border-[#e2e8f0] dark:border-[#1e293b] text-xs font-semibold transition flex items-center gap-1.5 self-start sm:self-center shadow-sm"
+                        className="h-9 px-3.5 rounded-[10px] bg-surface hover:bg-surface-subtle text-ink border border-line hover:border-line-strong shadow-card text-[13px] font-medium transition-colors flex items-center gap-2 self-start flex-shrink-0"
                       >
-                        <Award className="w-3.5 h-3.5 text-[#2563eb]" />
+                        <Award className="w-4 h-4 text-brand-fg" />
                         <span>Go to Practice</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <ArrowRight className="w-3.5 h-3.5 text-ink-muted" />
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                      <div className="lg:col-span-7 space-y-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1.5">
-                            Enter or Select a Math Equation to Learn
-                          </label>
-                          <input
-                            type="text"
-                            value={museTestEquation}
-                            onChange={(e) => setMuseTestEquation(e.target.value)}
-                            placeholder="e.g. 3x^2 - 5x - 2 = 0"
-                            className="w-full bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-3 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
-                          />
-                        </div>
-
-                        <div className="py-5 px-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] text-center overflow-hidden">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] block mb-1">
-                            Equation Preview
-                          </span>
-                          <div className="w-full text-center py-2 px-1 min-h-[50px] flex items-center justify-center overflow-x-auto overflow-y-hidden max-w-full">
-                            <MathDisplay
-                              value={museTestEquation || '3x^2 - 5x - 2 = 0'}
-                              displayMode
-                              className="text-[#0f172a] dark:text-[#f8fafc] font-medium text-sm sm:text-base max-w-full break-words"
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                      {/* Left Column: Sculpted Double-Well Equation Composer Card */}
+                      <div className="lg:col-span-7 p-1.5 rounded-[20px] bg-surface-subtle border border-line/80 shadow-[0_2px_12px_-4px_rgba(11,26,51,0.05)]">
+                        <div className="p-5 bg-surface rounded-[15px] border border-line/90 shadow-card space-y-4">
+                          <div className="space-y-2">
+                            <label htmlFor="learn-equation-input" className="block text-[13px] font-medium text-ink">
+                              Enter or Select a Math Equation to Learn
+                            </label>
+                            <input
+                              id="learn-equation-input"
+                              type="text"
+                              value={museTestEquation}
+                              onChange={(e) => setMuseTestEquation(e.target.value)}
+                              placeholder="e.g. 3x^2 - 5x - 2 = 0"
+                              className="w-full h-11 bg-surface-subtle/60 focus:bg-surface border border-line hover:border-line-strong rounded-[10px] px-3.5 text-sm font-mono text-ink placeholder:text-ink-muted/70 transition-all focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10"
                             />
                           </div>
-                        </div>
 
-                        {/* Explain Step-by-Step Action Button placed under the equation */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            runMultimodalSolve('mockBase64ImageData', museTestEquation)
-                          }
-                          disabled={transcribeLoading}
-                          className="w-full py-3.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-sm rounded-[10px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-[0.99]"
-                        >
-                          {transcribeLoading ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                              <span>Generating Step-by-Step Lesson...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4" />
-                              <span>Explain Step-by-Step</span>
-                            </>
-                          )}
-                        </button>
+                          <div className="py-5 px-6 bg-surface-subtle/80 rounded-[12px] border border-line/80 text-center overflow-hidden min-h-[132px] flex flex-col items-center justify-center">
+                            <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-muted block mb-1.5">
+                              Equation Preview
+                            </span>
+                            <div className="w-full text-center py-1 px-1 min-h-[46px] flex items-center justify-center overflow-x-auto overflow-y-hidden max-w-full">
+                              <MathDisplay
+                                value={museTestEquation || '3x^2 - 5x - 2 = 0'}
+                                displayMode
+                                className="text-ink font-medium text-base max-w-full break-words"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Explain Step-by-Step Action Button placed under the equation */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              runMultimodalSolve('mockBase64ImageData', museTestEquation)
+                            }
+                            disabled={transcribeLoading}
+                            className="w-full h-11 bg-brand hover:bg-brand-hover text-white font-medium text-[13.5px] rounded-[11px] transition-all flex items-center justify-center gap-2 shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_2px_4px_rgb(37_99_235/0.25)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.995]"
+                          >
+                            {transcribeLoading ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                <span>Generating Step-by-Step Lesson...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4" />
+                                <span>Explain Step-by-Step</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Right Column: Examples */}
-                      <div className="lg:col-span-5 p-5 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] flex flex-col justify-between space-y-3">
-                        <div>
-                          <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] flex items-center gap-1.5 mb-2">
-                            <BookOpen className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+                      {/* Right Column: Sculpted Examples Card with Numbered Step Badges */}
+                      <div className="lg:col-span-5 p-1.5 rounded-[20px] bg-surface-subtle border border-line/80 shadow-[0_2px_12px_-4px_rgba(11,26,51,0.05)]">
+                        <div className="p-5 bg-surface rounded-[15px] border border-line/90 shadow-card">
+                          <div className="flex items-center gap-2 text-[13.5px] font-semibold text-ink">
+                            <BookOpen className="w-4 h-4 text-brand-fg" />
                             <span>Examples</span>
-                          </span>
-                          <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mb-3 leading-[1.5]">
+                          </div>
+                          <p className="text-[12.5px] text-ink-muted mt-1 mb-3.5 leading-relaxed">
                             Select an example problem below to load it into the solver:
                           </p>
-                          <div className="space-y-2">
+                          <div className="space-y-1.5">
                             {[
                               { label: 'Simple Factoring: x² + 5x + 6 = 0', eq: 'x^2 + 5x + 6 = 0' },
                               { label: 'WAEC 2024 Q1(a): 3x² - 5x - 2 = 0', eq: '3x^2 - 5x - 2 = 0' },
                               { label: 'Quadratic: 2x² + 5x - 3 = 0', eq: '2x^2 + 5x - 3 = 0' },
                               { label: 'Factorisation: x² - 7x + 10 = 0', eq: 'x^2 - 7x + 10 = 0' },
-                            ].map((sample) => {
+                            ].map((sample, idx) => {
                               const isSelected = museTestEquation === sample.eq;
                               return (
                                 <button
                                   key={sample.eq}
                                   type="button"
                                   onClick={() => setMuseTestEquation(sample.eq)}
-                                  className={`w-full p-2.5 rounded-[8px] border text-left text-xs font-semibold transition flex items-center justify-between ${
+                                  aria-pressed={isSelected}
+                                  className={`group w-full h-10 px-2.5 rounded-[10px] text-left text-[13px] font-medium transition-all flex items-center justify-between gap-2.5 ${
                                     isSelected
-                                      ? 'bg-[#e0f0fe] dark:bg-[#1e293b] border-[#2563eb] text-[#2563eb] dark:text-[#60a5fa] shadow-sm'
-                                      : 'bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 text-[#0f172a] dark:text-[#f8fafc] border-[#e2e8f0] dark:border-[#1e293b]'
+                                      ? 'bg-brand-tint text-brand-ink ring-1 ring-inset ring-brand/25 shadow-[0_1px_2px_rgba(37,99,235,0.06)]'
+                                      : 'text-ink hover:bg-surface-subtle border border-transparent hover:border-line'
                                   }`}
                                 >
-                                  <span className="truncate">{sample.label}</span>
-                                  {isSelected && (
-                                    <Check className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa] flex-shrink-0" />
-                                  )}
+                                  <span className="flex items-center gap-2.5 min-w-0">
+                                    <span
+                                      className={`w-6 h-6 rounded-[6px] font-mono text-[11px] font-semibold flex items-center justify-center flex-shrink-0 transition-colors ${
+                                        isSelected
+                                          ? 'bg-brand text-white'
+                                          : 'bg-brand-tint/80 text-brand-ink group-hover:bg-brand-tint'
+                                      }`}
+                                    >
+                                      {String(idx + 1).padStart(2, '0')}
+                                    </span>
+                                    <span className="truncate">{sample.label}</span>
+                                  </span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-brand-fg flex-shrink-0" />}
                                 </button>
                               );
                             })}
@@ -1090,40 +1113,36 @@ export default function HomePage() {
                  ================================================================= */}
               {activeView === 'settings' && (
                 <div className="space-y-6 animate-fadeIn">
-                  <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] p-6 sm:p-8 space-y-8">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-                      <div>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                          <Sliders className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
-                          <span>Workspace Configuration</span>
-                        </div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+                  <section className="space-y-8">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="space-y-2">
+                        <h2 className="text-[26px] sm:text-[28px] leading-tight font-semibold text-ink">
                           Appearance, Pedagogy &amp; Voice Settings
                         </h2>
-                        <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
+                        <p className="text-sm text-ink-muted max-w-2xl leading-relaxed">
                           Switch between Light and Dark themes, customize WAEC scaffolding depth, and configure voice narration.
                         </p>
                       </div>
 
                       {settingsSavedBanner && (
-                        <div className="px-4 py-2 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-semibold flex items-center gap-2 animate-fadeIn">
-                          <Check className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+                        <div className="px-4 py-2 rounded-[8px] bg-brand-tint text-brand-ink text-xs font-medium flex items-center gap-2 animate-fadeIn">
+                          <Check className="w-4 h-4 text-brand-fg" />
                           <span>Preferences Saved</span>
                         </div>
                       )}
                     </div>
 
                     {/* Appearance / Theme Mode Selector Card */}
-                    <div className="p-5 rounded-[12px] bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                    <div className="p-5 rounded-2xl bg-surface border border-line shadow-card space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                         {resolvedDark ? (
                           <Moon className="w-4 h-4 text-[#60a5fa]" />
                         ) : (
-                          <Sun className="w-4 h-4 text-[#2563eb]" />
+                          <Sun className="w-4 h-4 text-brand-fg" />
                         )}
                         <span>Interface Theme &amp; Appearance</span>
                       </div>
-                      <p className="text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
+                      <p className="text-xs text-ink-muted leading-[1.6]">
                         Choose between our Corporate White &amp; Light Blue daylight studio or Midnight Obsidian dark mode for late-night exam prep.
                       </p>
 
@@ -1164,24 +1183,24 @@ export default function HomePage() {
                               onClick={() => handleSetSpecificTheme(t.id)}
                               className={`p-4 rounded-[8px] border text-left transition flex items-start justify-between gap-3 ${
                                 isSelected
-                                  ? 'bg-[#e0f0fe] dark:bg-[#1e293b] border-[#2563eb]/50 dark:border-[#3b82f6]/60'
-                                  : 'bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#f0f5fa] dark:hover:bg-[#1e293b]/50 border-[#e2e8f0] dark:border-[#1e293b]'
+                                  ? 'bg-brand-tint border-brand/40'
+                                  : 'bg-surface-subtle hover:bg-surface-sunken/50 border-line'
                               }`}
                             >
                               <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-xs font-bold text-[#0f172a] dark:text-[#f8fafc]">
-                                  <Icon className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+                                <div className="flex items-center gap-2 text-xs font-semibold text-ink">
+                                  <Icon className="w-3.5 h-3.5 text-brand-fg" />
                                   <span>{t.title}</span>
                                 </div>
-                                <div className="text-[11px] text-[#64748b] dark:text-[#94a3b8]">
+                                <div className="text-[11px] text-ink-muted">
                                   {t.desc}
                                 </div>
                               </div>
                               <div
                                 className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
                                   isSelected
-                                    ? 'bg-[#2563eb] text-white'
-                                    : 'border border-[#cbd5e1] dark:border-[#334155] bg-white dark:bg-[#0f172a]'
+                                    ? 'bg-brand text-white'
+                                    : 'border border-line-strong bg-surface'
                                 }`}
                               >
                                 {isSelected && <Check className="w-3 h-3" />}
@@ -1194,12 +1213,12 @@ export default function HomePage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* 1. Pedagogical Scaffolding Level */}
-                      <div className="p-5 rounded-[12px] bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
-                          <Layers className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+                      <div className="p-5 rounded-2xl bg-surface border border-line shadow-card space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                          <Layers className="w-4 h-4 text-brand-fg" />
                           <span>Default Pedagogical Scaffolding</span>
                         </div>
-                        <p className="text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
+                        <p className="text-xs text-ink-muted leading-[1.6]">
                           Choose how deeply SolvAm breaks down algebraic steps during exam prep.
                         </p>
                         <div className="space-y-2 pt-1">
@@ -1231,23 +1250,23 @@ export default function HomePage() {
                               }}
                               className={`w-full text-left p-3.5 rounded-[8px] border transition flex items-start justify-between gap-3 ${
                                 pedagogicalLevel === opt.id
-                                  ? 'bg-[#e0f0fe] dark:bg-[#1e293b] border-[#2563eb]/40 dark:border-[#3b82f6]/50'
-                                  : 'bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#f0f5fa] dark:hover:bg-[#1e293b]/50 border-[#e2e8f0] dark:border-[#1e293b]'
+                                  ? 'bg-brand-tint border-brand/40'
+                                  : 'bg-surface-subtle hover:bg-surface-sunken/50 border-line'
                               }`}
                             >
                               <div>
-                                <div className="text-xs font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                                <div className="text-xs font-semibold text-ink">
                                   {opt.title}
                                 </div>
-                                <div className="text-[11px] text-[#64748b] dark:text-[#94a3b8] mt-0.5 leading-[1.6]">
+                                <div className="text-[11px] text-ink-muted mt-0.5 leading-[1.6]">
                                   {opt.desc}
                                 </div>
                               </div>
                               <div
                                 className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
                                   pedagogicalLevel === opt.id
-                                    ? 'bg-[#2563eb] text-white'
-                                    : 'border border-[#cbd5e1] dark:border-[#334155] bg-white dark:bg-[#0f172a]'
+                                    ? 'bg-brand text-white'
+                                    : 'border border-line-strong bg-surface'
                                 }`}
                               >
                                 {pedagogicalLevel === opt.id && <Check className="w-3 h-3" />}
@@ -1259,12 +1278,12 @@ export default function HomePage() {
 
                       {/* 2. Language & Voice Narration Settings */}
                       <div className="space-y-6">
-                        <div className="p-5 rounded-[12px] bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] space-y-3">
-                          <div className="flex items-center gap-2 text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
-                            <Globe2 className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+                        <div className="p-5 rounded-2xl bg-surface border border-line shadow-card space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                            <Globe2 className="w-4 h-4 text-brand-fg" />
                             <span>Explanation Language Mode</span>
                           </div>
-                          <p className="text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
+                          <p className="text-xs text-ink-muted leading-[1.6]">
                             Switch between Standard WAEC English and relatable Nigerian Pidgin explanations.
                           </p>
                           <div className="grid grid-cols-2 gap-2.5 pt-1">
@@ -1276,14 +1295,14 @@ export default function HomePage() {
                               }}
                               className={`p-3.5 rounded-[8px] border text-left transition ${
                                 languageMode === 'standard'
-                                  ? 'bg-[#e0f0fe] dark:bg-[#1e293b] border-[#2563eb]/40 dark:border-[#3b82f6]/50'
-                                  : 'bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#f0f5fa] dark:hover:bg-[#1e293b]/50 border-[#e2e8f0] dark:border-[#1e293b]'
+                                  ? 'bg-brand-tint border-brand/40'
+                                  : 'bg-surface-subtle hover:bg-surface-sunken/50 border-line'
                               }`}
                             >
-                              <div className="text-xs font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                              <div className="text-xs font-semibold text-ink">
                                 Standard English
                               </div>
-                              <div className="text-[11px] text-[#64748b] dark:text-[#94a3b8] mt-0.5">
+                              <div className="text-[11px] text-ink-muted mt-0.5">
                                 Formal WAEC terminology
                               </div>
                             </button>
@@ -1296,24 +1315,24 @@ export default function HomePage() {
                               }}
                               className={`p-3.5 rounded-[8px] border text-left transition ${
                                 languageMode === 'pidgin'
-                                  ? 'bg-[#e0f0fe] dark:bg-[#1e293b] border-[#2563eb]/40 dark:border-[#3b82f6]/50'
-                                  : 'bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#f0f5fa] dark:hover:bg-[#1e293b]/50 border-[#e2e8f0] dark:border-[#1e293b]'
+                                  ? 'bg-brand-tint border-brand/40'
+                                  : 'bg-surface-subtle hover:bg-surface-sunken/50 border-line'
                               }`}
                             >
-                              <div className="text-xs font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                              <div className="text-xs font-semibold text-ink">
                                 Nigerian Pidgin 🇳🇬
                               </div>
-                              <div className="text-[11px] text-[#64748b] dark:text-[#94a3b8] mt-0.5">
+                              <div className="text-[11px] text-ink-muted mt-0.5">
                                 Relatable local analogies
                               </div>
                             </button>
                           </div>
                         </div>
 
-                        <div className="p-5 rounded-[12px] bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] space-y-4">
+                        <div className="p-5 rounded-2xl bg-surface border border-line shadow-card space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
-                              <Volume2 className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+                            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                              <Volume2 className="w-4 h-4 text-brand-fg" />
                               <span>Voice Tutor Narration Speed</span>
                             </div>
                             <button
@@ -1323,7 +1342,7 @@ export default function HomePage() {
                                   'Welcome to SolvAm. First, multiply the coefficient of x squared by the constant term.'
                                 )
                               }
-                              className="px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] text-[11px] font-semibold transition"
+                              className="px-2.5 py-1 rounded-[8px] bg-brand-tint hover:bg-brand/15 text-brand-ink text-[11px] font-semibold transition"
                             >
                               Test Voice
                             </button>
@@ -1342,10 +1361,10 @@ export default function HomePage() {
                                   setSpeechRate(sp.rate);
                                   savePreferences({ speechRate: sp.rate });
                                 }}
-                                className={`py-2 rounded-[8px] text-xs font-semibold border transition ${
+                                className={`py-2 rounded-[8px] text-xs font-medium border transition ${
                                   speechRate === sp.rate
-                                    ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                                    : 'bg-[#f8fafc] dark:bg-[#0b1120] text-[#64748b] dark:text-[#94a3b8] border-[#e2e8f0] dark:border-[#1e293b] hover:text-[#0f172a] dark:hover:text-[#f8fafc]'
+                                    ? 'bg-brand text-white border-brand'
+                                    : 'bg-surface-subtle text-ink-muted border-line hover:text-ink'
                                 }`}
                               >
                                 {sp.label}
@@ -1353,9 +1372,9 @@ export default function HomePage() {
                             ))}
                           </div>
 
-                          <div className="pt-3 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-2.5">
+                          <div className="pt-3 border-t border-line space-y-2.5">
                             <label className="flex items-center justify-between cursor-pointer">
-                              <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
+                              <span className="text-xs font-medium text-ink">
                                 Auto-Expand Telemetry HUD on Solve
                               </span>
                               <input
@@ -1370,7 +1389,7 @@ export default function HomePage() {
                             </label>
 
                             <label className="flex items-center justify-between cursor-pointer">
-                              <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
+                              <span className="text-xs font-medium text-ink">
                                 Show WAEC Examiner&apos;s Notes
                               </span>
                               <input
@@ -1389,18 +1408,18 @@ export default function HomePage() {
                     </div>
 
                     {/* System Diagnostics Row */}
-                    <div className="p-5 rounded-[12px] bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="p-5 rounded-2xl bg-surface border border-line shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 flex items-center justify-center text-[#2563eb] dark:text-[#60a5fa]">
+                        <div className="w-10 h-10 rounded-[10px] bg-brand-tint flex items-center justify-center text-brand-fg">
                           <Cpu className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                          <div className="text-[13px] font-medium text-ink">
                             Deterministic Python SymPy Engine Status
                           </div>
-                          <div className="text-[11px] text-[#64748b] dark:text-[#94a3b8] font-mono">
+                          <div className="text-xs text-ink-muted tabular-nums mt-0.5">
                             Status:{' '}
-                            <strong className="text-[#1e3a8a] dark:text-[#93c5fd]">
+                            <strong className="font-medium text-brand-ink">
                               {engineStatus.toUpperCase()}
                             </strong>{' '}
                             {engineLatency !== null && `• Ping: ${engineLatency}ms`}
@@ -1411,7 +1430,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={checkEngineHealth}
-                        className="px-4 py-2 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-semibold transition flex items-center gap-2 self-start sm:self-center"
+                        className="h-9 px-4 rounded-[10px] bg-brand-tint hover:bg-brand/15 text-brand-ink text-[13px] font-medium transition-colors flex items-center gap-2 self-start sm:self-center"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
                         <span>Ping Symbolic Service</span>
@@ -1423,7 +1442,7 @@ export default function HomePage() {
             </div>
 
             {/* FOOTER AT THE BOTTOM OF MAIN CONTENT AREA */}
-            <div className="max-w-5xl w-full mx-auto pt-10 mt-10 border-t border-[#e2e8f0] dark:border-[#1e293b] space-y-4">
+            <div className="max-w-5xl w-full mx-auto pt-14 space-y-5">
               <TelemetryHud
                 telemetry={telemetry}
                 engineStatus={engineStatus}
@@ -1431,38 +1450,36 @@ export default function HomePage() {
                 defaultExpanded={autoExpandTelemetry}
               />
 
-              <footer className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 text-xs text-[#64748b] dark:text-[#94a3b8]">
+              <footer className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-5 border-t border-line text-xs text-ink-muted">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-[#0f172a] dark:text-[#f8fafc]">
-                    SolvAm Copilot
-                  </span>
-                  <span>•</span>
+                  <span className="font-medium text-ink">SolvAm Copilot</span>
+                  <span aria-hidden="true">•</span>
                   <span>Meta SAM 3.1 + Muse Spark 1.3 + SymPy AST</span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
+                <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
                   <button
                     type="button"
                     onClick={() => navigateToView('learn')}
-                    className="hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
+                    className="font-medium hover:text-ink transition-colors"
                   >
                     Learn
                   </button>
                   <button
                     type="button"
                     onClick={() => navigateToView('practice')}
-                    className="hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
+                    className="font-medium hover:text-ink transition-colors"
                   >
                     Practice
                   </button>
                   <button
                     type="button"
                     onClick={() => navigateToView('settings')}
-                    className="hover:text-[#2563eb] dark:hover:text-[#60a5fa] transition"
+                    className="font-medium hover:text-ink transition-colors"
                   >
                     Settings
                   </button>
-                </div>
+                </nav>
               </footer>
             </div>
           </main>

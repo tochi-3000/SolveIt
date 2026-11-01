@@ -2,32 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * SolvAm design tokens.
+ * Colours are stored as space-separated RGB channels so Tailwind can apply
+ * alpha modifiers (e.g. `bg-brand/10`). Light + dark values live side by side
+ * here, which is why components should use semantic classes (`text-ink`,
+ * `border-line`, `bg-surface`) instead of pairing hex values with `dark:`.
+ */
 :root {
-  --background: #f4f7fa;
-  --foreground: #0f172a;
-  --bg-canvas: #f4f7fa;
-  --bg-sidebar: #f0f5fa;
-  --bg-active-nav: #e0f0fe;
-  --bg-secondary-pill: #dbeafe;
-  --text-accent-navy: #1e3a8a;
-  --text-primary: #0f172a;
-  --text-muted: #64748b;
-  --border-hairline: #e2e8f0;
-  --shadow-app-shell: 0 20px 40px rgba(148, 163, 184, 0.08);
+  /* Layers: shell (page) → panel (main area) → surface (cards) */
+  --shell: 255 255 255;
+  --panel: 255 255 255;
+  --surface: 255 255 255;
+  --surface-subtle: 246 249 254;
+  --surface-sunken: 238 243 251;
+
+  /* Sidebar: airy light blue, lighter than the brand tint so white active states pop */
+  --sidebar: 231 240 255;
+  --sidebar-line: 207 224 250;
+
+  --line: 229 235 244;
+  --line-strong: 208 218 233;
+
+  /* Navy-tinted neutrals instead of pure slate; muted text kept ≥ 4.5:1 on white */
+  --ink: 11 26 51;
+  --ink-soft: 68 82 107;
+  --ink-muted: 95 111 138;
+
+  --brand: 37 99 235;
+  --brand-hover: 29 78 216;
+  --brand-fg: 37 99 235;
+  --brand-tint: 232 240 254;
+  --brand-ink: 30 64 175;
+
+  --shadow-card: 0 1px 2px rgba(11, 26, 51, 0.04), 0 1px 1px rgba(11, 26, 51, 0.03);
+  --shadow-float: 0 12px 32px -12px rgba(11, 26, 51, 0.18), 0 2px 6px rgba(11, 26, 51, 0.05);
+  --shadow-app-shell: 0 12px 32px -12px rgba(11, 26, 51, 0.18), 0 2px 6px rgba(11, 26, 51, 0.05);
+
+  --background: #ffffff;
+  --foreground: rgb(var(--ink));
 }
 
 html.dark {
+  --shell: 7 11 20;
+  --panel: 12 19 34;
+  --surface: 17 26 46;
+  --surface-subtle: 20 30 52;
+  --surface-sunken: 11 17 30;
+
+  --sidebar: 14 26 51;
+  --sidebar-line: 30 48 84;
+
+  --line: 30 41 59;
+  --line-strong: 51 65 85;
+
+  --ink: 248 250 252;
+  --ink-soft: 190 200 216;
+  --ink-muted: 148 163 184;
+
+  --brand: 37 99 235;
+  --brand-hover: 59 130 246;
+  --brand-fg: 96 165 250;
+  --brand-tint: 23 37 84;
+  --brand-ink: 147 197 253;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
+  --shadow-app-shell: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
+
   --background: #070b14;
-  --foreground: #f8fafc;
-  --bg-canvas: #070b14;
-  --bg-sidebar: #0b1120;
-  --bg-active-nav: #1e293b;
-  --bg-secondary-pill: rgba(30, 58, 138, 0.45);
-  --text-accent-navy: #93c5fd;
-  --text-primary: #f8fafc;
-  --text-muted: #94a3b8;
-  --border-hairline: #1e293b;
-  --shadow-app-shell: 0 24px 48px rgba(0, 0, 0, 0.55);
 }
 
 body {
@@ -42,6 +85,7 @@ body {
 
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+  letter-spacing: -0.02em;
 }
 
 code, pre, .font-mono {
@@ -59,20 +103,18 @@ code, pre, .font-mono {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: rgb(var(--line-strong));
   border-radius: 9999px;
 }
 
-html.dark ::-webkit-scrollbar-thumb {
-  background: #334155;
-}
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: rgb(var(--ink-muted));
 }
 
-html.dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+/* Keyboard focus: one consistent, visible ring across every interactive element */
+:focus-visible {
+  outline: 2px solid rgb(var(--brand) / 0.55);
+  outline-offset: 2px;
 }
 
 /* KaTeX typography & spacing overrides — inherit parent text color so dark modals & light cards both render crisply */
@@ -106,4 +148,13 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 .animate-fadeIn {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeIn {
+    animation: none;
+  }
+  body {
+    transition: none;
+  }
 }

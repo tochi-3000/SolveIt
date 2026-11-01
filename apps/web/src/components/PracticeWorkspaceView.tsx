@@ -417,26 +417,26 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
       {/* =====================================================================
           SECTION 1: Practice Header & 2-Column Problem Setup
          ===================================================================== */}
-      <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] p-6 sm:p-8 space-y-6 shadow-sm">
+      <section className="space-y-7">
         {/* Header Bar */}
-        <div className="pb-5 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-[#f8fafc]">
+        <div className="space-y-1.5 pb-6 border-b border-line">
+          <h2 className="text-[24px] sm:text-[26px] leading-tight font-semibold text-ink">
             Practice &amp; Master What You Learned
           </h2>
-          <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-2xl leading-[1.6]">
-            Solve any math problem using our interactive <strong>Canvas</strong> or upload your physical paper notebook for automatic line-by-line red-pen grading with official WAEC <strong>[M1] Method</strong> and <strong>[A1] Accuracy</strong> marks.
+          <p className="text-sm text-ink-muted max-w-2xl leading-relaxed">
+            Solve any math problem using our interactive <strong className="font-medium text-ink-soft">Canvas</strong> or upload your physical paper notebook for automatic line-by-line red-pen grading with official WAEC <strong className="font-medium text-ink-soft">[M1] Method</strong> and <strong className="font-medium text-ink-soft">[A1] Accuracy</strong> marks.
           </p>
         </div>
 
         {/* Recommended Twin Problem from "Learn" Page (if available) */}
         {latestLearnedSolution?.twinPracticeProblem && (
-          <div className="p-4 rounded-[12px] bg-[#dbeafe]/60 dark:bg-[#1e3a8a]/30 border border-[#bfdbfe] dark:border-[#1e3a8a] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-4 rounded-2xl bg-brand-tint/70 ring-1 ring-inset ring-brand/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="text-xs font-bold text-[#1e3a8a] dark:text-[#93c5fd] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+              <div className="text-[13px] font-medium text-brand-ink flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-brand-fg" />
                 <span>Recommended from Your Recent &ldquo;Learn&rdquo; Session ({latestLearnedSolution.topic}):</span>
               </div>
-              <div className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
+              <div className="text-sm font-semibold text-ink">
                 <MathDisplay value={latestLearnedSolution.twinPracticeProblem.twin_equation_latex} inline />
               </div>
             </div>
@@ -451,7 +451,7 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
                 setHintData(null);
                 setActiveWorkspaceTab('canvas');
               }}
-              className="px-4 py-2 rounded-[8px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold transition flex items-center gap-1.5 self-start sm:self-center shadow-sm"
+              className="h-9 px-4 rounded-[10px] bg-brand hover:bg-brand-hover text-white text-[13px] font-medium transition-colors flex items-center gap-2 self-start sm:self-center shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_1px_2px_rgb(37_99_235/0.35)]"
             >
               <span>Load Twin Problem</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -460,124 +460,130 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
         )}
 
         {/* Two-Column Grid: Active Question & Preview on the Left, Examples on the Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column (col-span-7): Active Question Input + Equation Preview + Quick Controls */}
-          <div className="lg:col-span-7 space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] mb-1.5">
-                Enter or Select a Math Problem to Practice
-              </label>
-              <input
-                type="text"
-                value={originalProblem}
-                onChange={(e) => {
-                  const nextVal = e.target.value;
-                  onChangeOriginalProblem(nextVal);
-                }}
-                placeholder="Enter an equation or word problem (e.g. 4x + 10 = 16 or Find the 5th term of an AP...)"
-                className="w-full bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] px-4 py-3 text-sm font-mono text-[#0f172a] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 focus:border-[#2563eb]"
-              />
-            </div>
-
-            {/* Equation / Problem Preview Box */}
-            <div className="py-5 px-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] text-center overflow-hidden">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-[#94a3b8] block mb-1">
-                Problem Preview
-              </span>
-              <div className="w-full text-center py-2 px-1 min-h-[50px] flex items-center justify-center overflow-x-auto overflow-y-hidden max-w-full">
-                <MathDisplay
-                  value={originalProblem || '3x^2 - 5x - 2 = 0'}
-                  displayMode
-                  className="text-[#0f172a] dark:text-[#f8fafc] font-medium text-sm sm:text-base max-w-full break-words"
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column (col-span-7): Sculpted Double-Well Problem Setup Card */}
+          <div className="lg:col-span-7 p-1.5 rounded-[20px] bg-surface-subtle border border-line/80 shadow-[0_2px_12px_-4px_rgba(11,26,51,0.05)]">
+            <div className="p-5 bg-surface rounded-[15px] border border-line/90 shadow-card space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="practice-problem-input" className="block text-[13px] font-medium text-ink">
+                  Enter or Select a Math Problem to Practice
+                </label>
+                <input
+                  id="practice-problem-input"
+                  type="text"
+                  value={originalProblem}
+                  onChange={(e) => {
+                    const nextVal = e.target.value;
+                    onChangeOriginalProblem(nextVal);
+                  }}
+                  placeholder="Enter an equation or word problem (e.g. 4x + 10 = 16 or Find the 5th term of an AP...)"
+                  className="w-full h-11 bg-surface-subtle/60 focus:bg-surface border border-line hover:border-line-strong rounded-[10px] px-3.5 text-sm font-mono text-ink placeholder:text-ink-muted/70 transition-all focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10"
                 />
               </div>
-            </div>
 
-            {/* Quick Actions Bar (Attempt / Timed Practice Button + Teach Me This in Learn) */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleToggleTimedPractice}
-                  className={`px-3.5 py-2 text-xs font-semibold rounded-[8px] transition flex items-center gap-1.5 shadow-sm ${
-                    isTimerActive
-                      ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                      : timerSeconds > 0
-                      ? 'bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-500/30'
-                      : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30'
-                  }`}
-                  title={
-                    isTimerActive
-                      ? 'Click to pause timed attempt'
-                      : 'Start timed exam practice for this problem'
-                  }
-                >
-                  <Timer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>
-                    {isTimerActive
-                      ? `⏱️ In Progress (${formatTimer(timerSeconds)})`
-                      : timerSeconds > 0
-                      ? `⏱️ Paused (${formatTimer(timerSeconds)})`
-                      : '⏱️ Timed Practice'}
-                  </span>
-                </button>
+              {/* Equation / Problem Preview Box */}
+              <div className="py-5 px-6 bg-surface-subtle/80 rounded-[12px] border border-line/80 text-center overflow-hidden min-h-[132px] flex flex-col items-center justify-center">
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-muted block mb-1.5">
+                  Problem Preview
+                </span>
+                <div className="w-full text-center py-1 px-1 min-h-[46px] flex items-center justify-center overflow-x-auto overflow-y-hidden max-w-full">
+                  <MathDisplay
+                    value={originalProblem || '3x^2 - 5x - 2 = 0'}
+                    displayMode
+                    className="text-ink font-medium text-base max-w-full break-words"
+                  />
+                </div>
+              </div>
 
-                {timerSeconds > 0 && (
+              {/* Quick Actions Bar (Attempt / Timed Practice Button + Teach Me This in Learn) */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleResetTimer}
-                    className="p-2 text-xs text-[#64748b] hover:text-rose-600 bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[8px] transition"
-                    title="Reset practice timer"
+                    onClick={handleToggleTimedPractice}
+                    className={`h-9 px-3.5 text-[13px] font-medium rounded-[10px] transition-colors flex items-center gap-2 ${
+                      isTimerActive
+                        ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 ring-1 ring-inset ring-emerald-500/30'
+                        : timerSeconds > 0
+                        ? 'bg-sky-500/10 text-sky-800 dark:text-sky-300 ring-1 ring-inset ring-sky-500/30'
+                        : 'bg-surface hover:bg-surface-subtle text-ink border border-line hover:border-line-strong shadow-card'
+                    }`}
+                    title={
+                      isTimerActive
+                        ? 'Click to pause timed attempt'
+                        : 'Start timed exam practice for this problem'
+                    }
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <Timer
+                      className={`w-4 h-4 ${
+                        isTimerActive || timerSeconds > 0 ? '' : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    />
+                    <span className="tabular-nums">
+                      {isTimerActive
+                        ? `In Progress (${formatTimer(timerSeconds)})`
+                        : timerSeconds > 0
+                        ? `Paused (${formatTimer(timerSeconds)})`
+                        : 'Timed Practice'}
+                    </span>
                   </button>
-                )}
+
+                  {timerSeconds > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetTimer}
+                      className="h-9 w-9 grid place-items-center text-ink-muted hover:text-rose-600 bg-surface border border-line hover:border-line-strong rounded-[10px] shadow-card transition-colors"
+                      title="Reset practice timer"
+                      aria-label="Reset practice timer"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onSendToLearn(originalProblem)}
+                  className="h-9 px-3.5 text-[13px] font-medium bg-brand-tint hover:bg-brand/15 text-brand-ink rounded-[10px] transition-colors flex items-center gap-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Teach Me This in Learn</span>
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => onSendToLearn(originalProblem)}
-                className="px-3.5 py-2 text-xs font-semibold bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px] transition flex items-center gap-1.5"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Teach Me This in Learn</span>
-              </button>
+              {/* Fresh Twin Generation Notification */}
+              {twinNotice && (
+                <div className="p-3 rounded-[10px] bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/25 text-xs text-emerald-800 dark:text-emerald-300 animate-fadeIn">
+                  <MathDisplay value={twinNotice} inline />
+                </div>
+              )}
             </div>
-
-            {/* Fresh Twin Generation Notification */}
-            {twinNotice && (
-              <div className="p-2.5 rounded-[8px] bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 animate-fadeIn">
-                <MathDisplay value={twinNotice} inline />
-              </div>
-            )}
           </div>
 
-          {/* Right Column (col-span-5): Examples Card */}
-          <div className="lg:col-span-5 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] p-5 flex flex-col justify-between shadow-sm">
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-[#e2e8f0] dark:border-[#1e293b] mb-3">
+          {/* Right Column (col-span-5): Sculpted Examples Card with Numbered Step Badges */}
+          <div className="lg:col-span-5 p-1.5 rounded-[20px] bg-surface-subtle border border-line/80 shadow-[0_2px_12px_-4px_rgba(11,26,51,0.05)]">
+            <div className="p-5 bg-surface rounded-[15px] border border-line/90 shadow-card">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
-                  <h3 className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
-                    Examples
-                  </h3>
+                  <BookOpen className="w-4 h-4 text-brand-fg" />
+                  <h3 className="text-[13.5px] font-semibold text-ink">Examples</h3>
                 </div>
                 <button
                   type="button"
                   onClick={handleGenerateFreshTwin}
                   disabled={generatingTwin}
-                  className="p-1 px-2 rounded-[6px] hover:bg-[#e0f0fe] dark:hover:bg-[#1e293b] text-[#2563eb] dark:text-[#60a5fa] transition flex items-center gap-1 text-[11px] font-semibold"
+                  className="h-7 px-2.5 rounded-lg bg-brand-tint/70 hover:bg-brand-tint text-brand-ink transition-colors flex items-center gap-1.5 text-xs font-medium disabled:opacity-60"
                   title="Generate fresh twin question using SymPy CAS"
                 >
-                  <RefreshCw className={`w-3 h-3 ${generatingTwin ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3 h-3 text-brand-fg ${generatingTwin ? 'animate-spin' : ''}`} />
                   <span>Fresh Twin</span>
                 </button>
               </div>
-              <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mb-3 leading-[1.5]">
+              <p className="text-[12.5px] text-ink-muted mt-1 mb-3.5 leading-relaxed">
                 Select an example problem below to load it into the practice workbook:
               </p>
-              <div className="space-y-2">
-                {PRACTICE_DRILLS.map((drill) => {
+              <div className="space-y-1.5">
+                {PRACTICE_DRILLS.map((drill, idx) => {
                   const isSelected = originalProblem === drill.equation;
                   return (
                     <button
@@ -588,16 +594,26 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
                         onChangeStudentSteps(['', '', '']);
                         setHintData(null);
                       }}
-                      className={`w-full p-2.5 rounded-[8px] border text-left text-xs font-semibold transition flex items-center justify-between ${
+                      aria-pressed={isSelected}
+                      className={`group w-full h-10 px-2.5 rounded-[10px] text-left text-[13px] font-medium transition-all flex items-center justify-between gap-2.5 ${
                         isSelected
-                          ? 'bg-[#e0f0fe] dark:bg-[#1e293b] border-[#2563eb] text-[#2563eb] dark:text-[#60a5fa] shadow-sm'
-                          : 'bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#e0f0fe]/50 dark:hover:bg-[#1e293b]/60 text-[#0f172a] dark:text-[#f8fafc] border-[#e2e8f0] dark:border-[#1e293b]'
+                          ? 'bg-brand-tint text-brand-ink ring-1 ring-inset ring-brand/25 shadow-[0_1px_2px_rgba(37,99,235,0.06)]'
+                          : 'text-ink hover:bg-surface-subtle border border-transparent hover:border-line'
                       }`}
                     >
-                      <span className="truncate">{drill.displayLabel}</span>
-                      {isSelected && (
-                        <Check className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa] flex-shrink-0 ml-1.5" />
-                      )}
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className={`w-6 h-6 rounded-[6px] font-mono text-[11px] font-semibold flex items-center justify-center flex-shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-brand text-white'
+                              : 'bg-brand-tint/80 text-brand-ink group-hover:bg-brand-tint'
+                          }`}
+                        >
+                          {String(idx + 1).padStart(2, '0')}
+                        </span>
+                        <span className="truncate">{drill.displayLabel}</span>
+                      </span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-brand-fg flex-shrink-0" />}
                     </button>
                   );
                 })}
@@ -612,26 +628,32 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
          ===================================================================== */}
       <div
         id="practice-workspace-menu"
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-[#f0f5fa] dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[14px] shadow-sm"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
       >
-        <div className="flex items-center gap-2">
+        <div
+          role="tablist"
+          aria-label="Practice workspace mode"
+          className="inline-flex items-center gap-1 p-1 bg-surface-sunken rounded-[12px] self-start"
+        >
           {/* Option 1: Canvas (Default) */}
           <button
             type="button"
+            role="tab"
+            aria-selected={activeWorkspaceTab === 'canvas'}
             onClick={() => setActiveWorkspaceTab('canvas')}
-            className={`px-4 py-2.5 rounded-[10px] text-xs font-bold transition flex items-center gap-2 ${
+            className={`h-9 px-3.5 rounded-[9px] text-[13px] font-medium transition-all flex items-center gap-2 ${
               activeWorkspaceTab === 'canvas'
-                ? 'bg-[#2563eb] text-white shadow-sm'
-                : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] hover:bg-white/60 dark:hover:bg-white/5'
+                ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(11,26,51,0.08),0_0_0_1px_rgb(var(--line))]'
+                : 'text-ink-muted hover:text-ink'
             }`}
           >
-            <PenTool className="w-3.5 h-3.5" />
+            <PenTool className={`w-4 h-4 ${activeWorkspaceTab === 'canvas' ? 'text-brand-fg' : ''}`} />
             <span>Canvas</span>
             <span
-              className={`text-[10px] py-0.5 px-2 rounded-full font-medium ${
+              className={`text-[11px] py-0.5 px-2 rounded-full font-medium ${
                 activeWorkspaceTab === 'canvas'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[#e2e8f0] dark:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8]'
+                  ? 'bg-brand-tint text-brand-ink'
+                  : 'text-ink-muted'
               }`}
             >
               Interactive Pad
@@ -641,20 +663,22 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
           {/* Option 2: Upload */}
           <button
             type="button"
+            role="tab"
+            aria-selected={activeWorkspaceTab === 'upload'}
             onClick={() => setActiveWorkspaceTab('upload')}
-            className={`px-4 py-2.5 rounded-[10px] text-xs font-bold transition flex items-center gap-2 ${
+            className={`h-9 px-3.5 rounded-[9px] text-[13px] font-medium transition-all flex items-center gap-2 ${
               activeWorkspaceTab === 'upload'
-                ? 'bg-[#2563eb] text-white shadow-sm'
-                : 'text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] hover:bg-white/60 dark:hover:bg-white/5'
+                ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(11,26,51,0.08),0_0_0_1px_rgb(var(--line))]'
+                : 'text-ink-muted hover:text-ink'
             }`}
           >
-            <Upload className="w-3.5 h-3.5" />
+            <Upload className={`w-4 h-4 ${activeWorkspaceTab === 'upload' ? 'text-brand-fg' : ''}`} />
             <span>Upload</span>
             <span
-              className={`text-[10px] py-0.5 px-2 rounded-full font-medium ${
+              className={`text-[11px] py-0.5 px-2 rounded-full font-medium ${
                 activeWorkspaceTab === 'upload'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd]'
+                  ? 'bg-brand-tint text-brand-ink'
+                  : 'text-ink-muted'
               }`}
             >
               Paper &amp; Photo
@@ -663,17 +687,17 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
         </div>
 
         {/* Status Indicator on the Right */}
-        <div className="flex items-center gap-3 pr-2">
+        <div className="flex items-center gap-3">
           {isTimerActive && (
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-[8px] text-xs font-mono font-bold text-amber-800 dark:text-amber-300">
+            <div className="flex items-center gap-1.5 h-8 px-3 bg-amber-500/10 ring-1 ring-inset ring-amber-500/25 rounded-full text-xs font-medium tabular-nums text-amber-800 dark:text-amber-300">
               <Clock className="w-3.5 h-3.5 animate-pulse text-amber-600 dark:text-amber-400" />
               <span>Timer: {formatTimer(timerSeconds)}</span>
             </div>
           )}
 
           {activeWorkspaceTab === 'upload' && (
-            <div className="text-[11px] font-semibold text-[#64748b] dark:text-[#94a3b8] flex items-center gap-1.5">
-              <Camera className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+            <div className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
+              <Camera className="w-3.5 h-3.5 text-brand-fg" />
               <span>Camera &amp; Scan Enabled</span>
             </div>
           )}
@@ -684,118 +708,120 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
           SECTION 3A: TAB 1 - INTERACTIVE MATH CANVAS (DEFAULT)
          ===================================================================== */}
       {activeWorkspaceTab === 'canvas' && (
-        <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] p-6 sm:p-8 space-y-6 shadow-sm">
-          <InteractiveMathCanvas
-            originalProblem={originalProblem}
-            studentSteps={studentSteps}
-            onChangeStudentSteps={onChangeStudentSteps}
-            onCanvasImageChange={handleCanvasImageChange}
-            onInputModeChange={setCanvasInputMode}
-            onLoadSampleWorking={() => {
-              onChangeStudentSteps(buildProblemAwareSteps(originalProblem, 'correct'));
-              setHintData(null);
-            }}
-            onSimulateMistake={() => {
-              onChangeStudentSteps(buildProblemAwareSteps(originalProblem, 'mistake'));
-              setHintData(null);
-            }}
-            onRequestHint={handleRequestHint}
-            hintLoading={hintLoading}
-            hintData={hintData}
-            onDismissHint={() => setHintData(null)}
-          />
+        <section className="p-1.5 rounded-[20px] bg-surface-subtle border border-line/80 shadow-[0_2px_12px_-4px_rgba(11,26,51,0.05)]">
+          <div className="p-5 sm:p-6 bg-surface rounded-[15px] border border-line/90 shadow-card space-y-5">
+            <InteractiveMathCanvas
+              originalProblem={originalProblem}
+              studentSteps={studentSteps}
+              onChangeStudentSteps={onChangeStudentSteps}
+              onCanvasImageChange={handleCanvasImageChange}
+              onInputModeChange={setCanvasInputMode}
+              onLoadSampleWorking={() => {
+                onChangeStudentSteps(buildProblemAwareSteps(originalProblem, 'correct'));
+                setHintData(null);
+              }}
+              onSimulateMistake={() => {
+                onChangeStudentSteps(buildProblemAwareSteps(originalProblem, 'mistake'));
+                setHintData(null);
+              }}
+              onRequestHint={handleRequestHint}
+              hintLoading={hintLoading}
+              hintData={hintData}
+              onDismissHint={() => setHintData(null)}
+            />
 
-          <button
-            type="button"
-            onClick={() => onVerifySteps(canvasDataUrl, canvasInputMode)}
-            disabled={verifyLoading}
-            className="w-full py-3.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-xs sm:text-sm rounded-[10px] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-[0.99]"
-          >
-            {verifyLoading ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Grading Your Working Against WAEC M1/A1 Standards...</span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-4 h-4" />
-                <span>Grade My Working (WAEC M1/A1 Step &amp; Canvas Verifier)</span>
-              </>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => onVerifySteps(canvasDataUrl, canvasInputMode)}
+              disabled={verifyLoading}
+              className="w-full h-11 bg-brand hover:bg-brand-hover text-white font-medium text-[13.5px] rounded-[11px] transition-all flex items-center justify-center gap-2 shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_2px_4px_rgb(37_99_235/0.25)] disabled:opacity-50 active:scale-[0.995]"
+            >
+              {verifyLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Grading Your Working Against WAEC M1/A1 Standards...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Grade My Working (WAEC M1/A1 Step &amp; Canvas Verifier)</span>
+                </>
+              )}
+            </button>
 
-          {/* Verification Scorecard Output */}
-          {verifyResult && (
-            <div className="p-6 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] space-y-4 animate-fadeIn">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-                <div>
-                  <div className="text-sm font-bold flex items-center gap-2">
-                    {verifyResult.is_fully_correct ? (
-                      <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                        100% Mathematically Rigorous Working!
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
-                        <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                        Mistake Detected in Sequential Working
-                      </span>
+            {/* Verification Scorecard Output */}
+            {verifyResult && (
+              <div className="p-5 bg-surface-subtle/60 rounded-[14px] border border-line space-y-4 animate-fadeIn">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
+                  <div>
+                    <div className="text-sm font-semibold flex items-center gap-2">
+                      {verifyResult.is_fully_correct ? (
+                        <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                          100% Mathematically Rigorous Working!
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+                          <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                          Mistake Detected in Sequential Working
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-ink-muted mt-1 leading-[1.6]">
+                      <MathDisplay value={verifyResult.pedagogical_summary} inline />
+                    </div>
+                  </div>
+
+                  <div className="px-5 py-2.5 bg-surface border border-line rounded-[12px] text-center shadow-card">
+                    <div className="text-[10px] text-ink-muted font-semibold uppercase tracking-wider">
+                      WAEC Marks Earned
+                    </div>
+                    <div className="text-2xl font-semibold text-brand-ink font-mono">
+                      {verifyResult.waec_score_earned} / {verifyResult.waec_score_total}
+                    </div>
+                    {timerSeconds > 0 && (
+                      <div className="text-[10px] text-ink-muted mt-0.5 font-mono">
+                        ⏱️ Time: {formatTimer(timerSeconds)}
+                      </div>
                     )}
                   </div>
-                  <div className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
-                    <MathDisplay value={verifyResult.pedagogical_summary} inline />
-                  </div>
                 </div>
 
-                <div className="px-5 py-2.5 bg-[#f8fafc] dark:bg-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[12px] text-center">
-                  <div className="text-[10px] text-[#64748b] dark:text-[#94a3b8] font-semibold uppercase tracking-wider">
-                    WAEC Marks Earned
-                  </div>
-                  <div className="text-2xl font-bold text-[#1e3a8a] dark:text-[#93c5fd] font-mono">
-                    {verifyResult.waec_score_earned} / {verifyResult.waec_score_total}
-                  </div>
-                  {timerSeconds > 0 && (
-                    <div className="text-[10px] text-[#64748b] dark:text-[#94a3b8] mt-0.5 font-mono">
-                      ⏱️ Time: {formatTimer(timerSeconds)}
+                <div className="divide-y divide-line">
+                  {verifyResult.step_analyses.map((sa) => (
+                    <div
+                      key={sa.step_index}
+                      className="py-3.5 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="px-2 py-0.5 rounded-[8px] bg-brand-tint text-xs font-mono font-semibold text-brand-ink">
+                          Line {sa.step_index}
+                        </span>
+                        <span className="text-sm text-ink font-semibold">
+                          <MathDisplay value={sa.raw_text} inline />
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-ink-muted leading-[1.6]">
+                          <MathDisplay value={sa.feedback || ''} inline />
+                        </span>
+                        <span
+                          className={`px-2.5 py-1 rounded-[8px] text-xs font-medium font-mono ${
+                            sa.waec_mark === 'M1' || sa.waec_mark === 'A1'
+                              ? 'bg-brand-tint text-brand-ink'
+                              : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
+                          }`}
+                        >
+                          {sa.waec_mark}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
-
-              <div className="divide-y divide-[#e2e8f0] dark:divide-[#1e293b]">
-                {verifyResult.step_analyses.map((sa) => (
-                  <div
-                    key={sa.step_index}
-                    className="py-3.5 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="px-2 py-0.5 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-mono font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                        Line {sa.step_index}
-                      </span>
-                      <span className="text-sm text-[#0f172a] dark:text-[#f8fafc] font-semibold">
-                        <MathDisplay value={sa.raw_text} inline />
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-[#64748b] dark:text-[#94a3b8] leading-[1.6]">
-                        <MathDisplay value={sa.feedback || ''} inline />
-                      </span>
-                      <span
-                        className={`px-2.5 py-1 rounded-[8px] text-xs font-semibold font-mono ${
-                          sa.waec_mark === 'M1' || sa.waec_mark === 'A1'
-                            ? 'bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd]'
-                            : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
-                        }`}
-                      >
-                        {sa.waec_mark}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </section>
       )}
 
@@ -803,7 +829,7 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
           SECTION 3B: TAB 2 - UPLOAD / SCAN PAPER NOTEBOOK WORKSPACE
          ===================================================================== */}
       {activeWorkspaceTab === 'upload' && (
-        <section className="bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] p-6 sm:p-8 space-y-6 shadow-sm animate-fadeIn">
+        <section className="bg-surface border border-line rounded-2xl p-6 sm:p-8 space-y-6 shadow-card animate-fadeIn">
           {/* Hidden File & Camera Inputs */}
           <input
             ref={fileInputRef}
@@ -833,14 +859,14 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
           {!uploadGradingResult && !uploadGradingLoading && (
             <div className="space-y-6">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-xs font-semibold text-[#1e3a8a] dark:text-[#93c5fd]">
-                  <Camera className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-brand-tint text-xs font-medium text-brand-ink">
+                  <Camera className="w-3.5 h-3.5 text-brand-fg" />
                   <span>Physical Paper Solution Grader</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-[#f8fafc] mt-2">
+                <h3 className="text-lg sm:text-xl font-semibold text-ink mt-2">
                   Upload or Snap a Photo of Your Paper Solution
                 </h3>
-                <p className="text-xs sm:text-sm text-[#64748b] dark:text-[#94a3b8] mt-1 leading-[1.6]">
+                <p className="text-xs sm:text-sm text-ink-muted mt-1 leading-[1.6]">
                   Did you solve this problem in your exercise book or on an exam sheet? Snap a photo with your camera or upload an image. Our multimodal Neuro-Symbolic engine automatically crops each line and applies official WAEC red-pen grading.
                 </p>
               </div>
@@ -858,22 +884,22 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
                   const file = e.dataTransfer.files?.[0];
                   if (file) handleProcessUploadedFile(file);
                 }}
-                className={`border-2 border-dashed rounded-[16px] p-8 text-center transition-all bg-white dark:bg-[#0f172a] ${
+                className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all bg-surface ${
                   isDragOver
-                    ? 'border-[#2563eb] bg-[#f0f7ff] dark:bg-[#1e293b]/50'
-                    : 'border-[#cbd5e1] dark:border-[#334155] hover:border-[#2563eb]'
+                    ? 'border-brand bg-[#f0f7ff] dark:bg-[#1e293b]/50'
+                    : 'border-line-strong hover:border-[#2563eb]'
                 }`}
               >
                 <div className="max-w-md mx-auto space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#2563eb] dark:text-[#60a5fa] mx-auto flex items-center justify-center shadow-inner">
+                  <div className="w-14 h-14 rounded-full bg-brand-tint text-brand-fg mx-auto flex items-center justify-center shadow-inner">
                     <Upload className="w-7 h-7" />
                   </div>
 
                   <div>
-                    <h4 className="text-sm sm:text-base font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                    <h4 className="text-sm sm:text-base font-semibold text-ink">
                       Drag and drop your paper photo here
                     </h4>
-                    <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1">
+                    <p className="text-xs text-ink-muted mt-1">
                       Supports JPG, PNG, WEBP from your phone camera or notebook scan.
                     </p>
                   </div>
@@ -883,7 +909,7 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-2.5 rounded-[10px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold transition flex items-center gap-2 shadow-sm"
+                      className="px-4 py-2.5 rounded-[10px] bg-brand hover:bg-brand-hover text-white text-xs font-medium transition flex items-center gap-2 shadow-card"
                     >
                       <ImageIcon className="w-4 h-4" />
                       <span>Choose File from Device</span>
@@ -892,9 +918,9 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
                     <button
                       type="button"
                       onClick={handleTriggerCamera}
-                      className="px-4 py-2.5 rounded-[10px] bg-white dark:bg-[#0f172a] hover:bg-[#f8fafc] dark:hover:bg-[#1e293b] text-[#0f172a] dark:text-[#f8fafc] border border-[#cbd5e1] dark:border-[#334155] text-xs font-semibold transition flex items-center gap-2 shadow-sm"
+                      className="px-4 py-2.5 rounded-[10px] bg-surface hover:bg-[#f8fafc] dark:hover:bg-[#1e293b] text-ink border border-line-strong text-xs font-medium transition flex items-center gap-2 shadow-card"
                     >
-                      <Camera className="w-4 h-4 text-[#2563eb] dark:text-[#60a5fa]" />
+                      <Camera className="w-4 h-4 text-brand-fg" />
                       <span>Take Photo / Scan Paper</span>
                     </button>
                   </div>
@@ -902,9 +928,9 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
               </div>
 
               {/* One-Click Sample Notebooks for Quick Testing */}
-              <div className="p-4 bg-white dark:bg-[#0f172a] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="text-xs text-[#64748b] dark:text-[#94a3b8]">
-                  <strong className="text-[#0f172a] dark:text-[#f8fafc]">Don&apos;t have a paper photo ready?</strong>{' '}
+              <div className="p-4 bg-surface rounded-[12px] border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="text-xs text-ink-muted">
+                  <strong className="text-ink">Don&apos;t have a paper photo ready?</strong>{' '}
                   Test the automatic grader with authentic sample student notebooks:
                 </div>
 
@@ -912,14 +938,14 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleLoadSampleNotebook('flawed')}
-                    className="px-3 py-1.5 rounded-[8px] bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-semibold transition flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-[8px] bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-medium transition flex items-center gap-1.5"
                   >
                     <span>Sample: Sign Error</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleLoadSampleNotebook('correct')}
-                    className="px-3 py-1.5 rounded-[8px] bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 text-xs font-semibold transition flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-[8px] bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 text-xs font-medium transition flex items-center gap-1.5"
                   >
                     <span>Sample: Distinction</span>
                   </button>
@@ -931,14 +957,14 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
           {/* CASE B: Grading In Progress Scanner HUD */}
           {uploadGradingLoading && (
             <div className="py-16 text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#2563eb] dark:text-[#60a5fa] mx-auto flex items-center justify-center animate-pulse shadow-md">
+              <div className="w-16 h-16 rounded-full bg-brand-tint text-brand-fg mx-auto flex items-center justify-center animate-pulse shadow-md">
                 <RefreshCw className="w-8 h-8 animate-spin" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-base font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                <h4 className="text-base font-semibold text-ink">
                   Scanning Handwritten Paper Solution...
                 </h4>
-                <p className="text-xs text-[#64748b] dark:text-[#94a3b8] max-w-md mx-auto">
+                <p className="text-xs text-ink-muted max-w-md mx-auto">
                   Meta Muse Spark 1.3 Vision OCR is segmenting vertical lines and validating algebra against SymPy CAS.
                 </p>
               </div>
@@ -949,14 +975,14 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
           {uploadGradingResult && !uploadGradingLoading && (
             <div className="space-y-4">
               {/* Reset / Upload Another Solution Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white dark:bg-[#0f172a] rounded-[10px] border border-[#e2e8f0] dark:border-[#1e293b]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-surface rounded-[10px] border border-line">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-xs font-bold text-[#0f172a] dark:text-[#f8fafc]">
+                  <span className="text-xs font-semibold text-ink">
                     Handwritten Sheet Graded Successfully
                   </span>
                   {timerSeconds > 0 && (
-                    <span className="text-xs font-mono font-semibold text-[#64748b] dark:text-[#94a3b8]">
+                    <span className="text-xs font-mono font-semibold text-ink-muted">
                       (⏱️ {formatTimer(timerSeconds)})
                     </span>
                   )}
@@ -969,7 +995,7 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
                       setUploadGradingResult(null);
                       setUploadedImageUri(null);
                     }}
-                    className="px-3 py-1.5 rounded-[8px] bg-[#f8fafc] dark:bg-[#1e293b] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc] border border-[#cbd5e1] dark:border-[#475569] transition flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-[8px] bg-[#f8fafc] dark:bg-[#1e293b] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] text-xs font-medium text-ink border border-[#cbd5e1] dark:border-[#475569] transition flex items-center gap-1.5"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>Upload Another Solution</span>

@@ -157,11 +157,11 @@ export default function CameraBridgeModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0f172a]/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-[#0f172a] border border-[#e2e8f0] dark:border-[#1e293b] rounded-[16px] max-w-md w-full p-6 sm:p-7 shadow-app-shell relative overflow-hidden">
+      <div className="bg-surface border border-line rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-app-shell relative overflow-hidden">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-[8px] bg-[#f8fafc] dark:bg-[#0b1120] hover:bg-[#e2e8f0]/60 dark:hover:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-[#f8fafc] transition"
+          className="absolute top-5 right-5 p-2 rounded-[8px] bg-surface-subtle hover:bg-[#e2e8f0]/60 dark:hover:bg-[#1e293b] text-ink-muted hover:text-ink transition"
           aria-label="Close"
         >
           <X className="w-4 h-4" />
@@ -169,14 +169,14 @@ export default function CameraBridgeModal({
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[8px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 text-[#1e3a8a] dark:text-[#93c5fd] text-xs font-semibold mb-2">
-            <Smartphone className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[8px] bg-brand-tint text-brand-ink text-xs font-medium mb-2">
+            <Smartphone className="w-3.5 h-3.5 text-brand-fg" />
             <span>Mobile Camera Bridge</span>
           </div>
-          <h2 className="text-xl font-bold text-[#0f172a] dark:text-[#f8fafc]">
+          <h2 className="text-xl font-semibold text-ink">
             Scan from Your Phone
           </h2>
-          <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1 max-w-xs mx-auto leading-[1.6]">
+          <p className="text-xs text-ink-muted mt-1 max-w-xs mx-auto leading-[1.6]">
             Scan the QR code below with your smartphone camera. Snap a photo of your WAEC exam paper to beam it here live.
           </p>
         </div>
@@ -188,37 +188,37 @@ export default function CameraBridgeModal({
         )}
 
         {/* QR Code Container */}
-        <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-b from-[#f8fafc] to-[#f0f7ff] dark:from-[#131c2e] dark:to-[#0b1120] rounded-[12px] border border-[#e2e8f0] dark:border-[#1e293b] mb-6 relative">
+        <div className="flex flex-col items-center justify-center p-6 bg-surface-subtle rounded-[12px] border border-line mb-6 relative">
           {status === 'initializing' ? (
-            <div className="h-[210px] flex flex-col items-center justify-center gap-2 text-[#64748b] dark:text-[#94a3b8] text-xs">
-              <RefreshCw className="w-6 h-6 animate-spin text-[#2563eb] dark:text-[#60a5fa]" />
+            <div className="h-[210px] flex flex-col items-center justify-center gap-2 text-ink-muted text-xs">
+              <RefreshCw className="w-6 h-6 animate-spin text-brand-fg" />
               <span>Generating secure session QR...</span>
             </div>
           ) : status === 'connected' ? (
             <div className="h-[210px] flex flex-col items-center justify-center gap-3 text-center px-4 animate-fadeIn">
-              <div className="w-14 h-14 rounded-[12px] bg-[#dbeafe] dark:bg-[#1e3a8a]/40 flex items-center justify-center">
-                <Smartphone className="w-7 h-7 text-[#2563eb] dark:text-[#60a5fa] animate-pulse" />
+              <div className="w-14 h-14 rounded-[12px] bg-brand-tint flex items-center justify-center">
+                <Smartphone className="w-7 h-7 text-brand-fg animate-pulse" />
               </div>
-              <span className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
+              <span className="text-sm font-semibold text-ink">
                 Phone Connected!
               </span>
-              <p className="text-xs text-[#64748b] dark:text-[#94a3b8]">
+              <p className="text-xs text-ink-muted">
                 Aim your phone camera at the math exam paper and tap snap.
               </p>
             </div>
           ) : status === 'received' ? (
             <div className="h-[210px] flex flex-col items-center justify-center gap-3 text-center animate-fadeIn">
-              <CheckCircle2 className="w-11 h-11 text-[#2563eb] dark:text-[#60a5fa]" />
-              <span className="text-sm font-bold text-[#0f172a] dark:text-[#f8fafc]">
+              <CheckCircle2 className="w-11 h-11 text-brand-fg" />
+              <span className="text-sm font-semibold text-ink">
                 Photo Beamed to Screen!
               </span>
-              <p className="text-xs text-[#64748b] dark:text-[#94a3b8]">
+              <p className="text-xs text-ink-muted">
                 Loading into SolvAm SAM 3.1 engine...
               </p>
             </div>
           ) : (
             captureUrl && (
-              <div className="p-3.5 bg-white rounded-[12px] border border-[#e2e8f0] shadow-sm">
+              <div className="p-3.5 bg-white rounded-[12px] border border-[#e2e8f0] shadow-card">
                 <QRCodeSVG
                   value={captureUrl}
                   size={188}
@@ -231,8 +231,8 @@ export default function CameraBridgeModal({
           )}
 
           {status === 'waiting' && (
-            <div className="mt-4 flex items-center gap-2 text-xs text-[#1e3a8a] dark:text-[#93c5fd] font-mono font-semibold">
-              <span className="w-2 h-2 rounded-full bg-[#2563eb] dark:bg-[#60a5fa] animate-ping" />
+            <div className="mt-4 flex items-center gap-2 text-xs text-brand-ink font-mono font-semibold">
+              <span className="w-2 h-2 rounded-full bg-brand dark:bg-[#60a5fa] animate-ping" />
               <span>Waiting for phone scan...</span>
             </div>
           )}
@@ -250,13 +250,13 @@ export default function CameraBridgeModal({
 
         {/* Link sharing & Desktop fallback */}
         <div className="space-y-3">
-          <div className="flex items-center gap-2 p-2 bg-[#f8fafc] dark:bg-[#0b1120] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b] text-xs">
-            <span className="truncate flex-1 font-mono text-[#64748b] dark:text-[#94a3b8] px-2">
+          <div className="flex items-center gap-2 p-2 bg-surface-subtle rounded-[8px] border border-line text-xs">
+            <span className="truncate flex-1 font-mono text-ink-muted px-2">
               {captureUrl || '...'}
             </span>
             <button
               onClick={copyLink}
-              className="px-3 py-1.5 bg-[#dbeafe] dark:bg-[#1e3a8a]/40 hover:bg-[#bfdbfe] dark:hover:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] rounded-[8px] transition flex items-center gap-1 font-semibold flex-shrink-0"
+              className="px-3 py-1.5 bg-brand-tint hover:bg-brand/15 text-brand-ink rounded-[8px] transition flex items-center gap-1 font-semibold flex-shrink-0"
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -264,7 +264,7 @@ export default function CameraBridgeModal({
           </div>
 
           <div className="pt-2 text-center">
-            <label className="text-xs text-[#2563eb] dark:text-[#60a5fa] hover:text-[#1d4ed8] font-semibold cursor-pointer transition inline-flex items-center justify-center gap-1.5">
+            <label className="text-xs text-brand-fg hover:text-[#1d4ed8] font-semibold cursor-pointer transition inline-flex items-center justify-center gap-1.5">
               <Upload className="w-3.5 h-3.5" />
               <span>Or upload an exam photo directly from this computer</span>
               <input type="file" accept="image/*" onChange={handleDesktopFile} className="hidden" />

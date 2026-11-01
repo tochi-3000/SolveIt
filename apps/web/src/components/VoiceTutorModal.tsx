@@ -309,15 +309,15 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
   };
 
   return (
-    <div className="mt-3 w-full rounded-[12px] bg-gradient-to-b from-[#f0f7ff] to-white dark:from-[#0b1120] dark:to-[#0f172a] border border-[#bfdbfe] dark:border-[#1e3a8a] shadow-sm p-3.5 sm:p-4.5 space-y-3 transition-all">
+    <div className="mt-3 w-full rounded-[12px] bg-surface border border-brand/20 shadow-card p-3.5 sm:p-4.5 space-y-3 transition-all">
       {/* Compact Header: Sparkles badge + Title + Close Button */}
       <div className="flex items-center justify-between gap-2 border-b border-[#e2e8f0]/80 dark:border-[#1e293b] pb-2.5">
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dbeafe] dark:bg-[#1e3a8a]/60 text-[#1e3a8a] dark:text-[#93c5fd] text-[11px] font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-[#2563eb] dark:text-[#60a5fa]" />
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-tint text-brand-ink text-[11px] font-semibold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-brand-fg" />
             Meta Muse Voice Transcribe
           </span>
-          <span className="text-xs font-semibold text-[#0f172a] dark:text-[#f8fafc]">
+          <span className="text-xs font-medium text-ink">
             Step {stepNumber} Inquiries
           </span>
         </div>
@@ -325,7 +325,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded-[6px] text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white hover:bg-[#e2e8f0] dark:hover:bg-[#1e293b] transition"
+          className="p-1 rounded-[6px] text-ink-muted hover:text-[#0f172a] dark:hover:text-white hover:bg-[#e2e8f0] dark:hover:bg-[#1e293b] transition"
           aria-label="Close voice menu"
           title="Close voice menu"
         >
@@ -348,7 +348,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
                 ? 'Listening to microphone... Speak clearly'
                 : `Ask anything about Step ${stepNumber} (or click mic to speak)...`
             }
-            className="flex-1 bg-white dark:bg-[#0b1120] border border-[#cbd5e1] dark:border-[#334155] rounded-[8px] px-3.5 py-2 text-xs sm:text-sm text-[#0f172a] dark:text-[#f8fafc] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb] transition"
+            className="flex-1 bg-surface border border-line-strong rounded-[8px] px-3.5 py-2 text-xs sm:text-sm text-ink placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb] transition"
             onKeyDown={(e) => e.key === 'Enter' && handleSubmitQuestion()}
           />
 
@@ -357,7 +357,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
             type="button"
             onClick={() => handleSubmitQuestion()}
             disabled={isLoading || !questionInput.trim()}
-            className="px-3.5 py-2 rounded-[8px] font-semibold bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 disabled:pointer-events-none text-white text-xs transition flex items-center justify-center gap-1.5 flex-shrink-0"
+            className="px-3.5 py-2 rounded-[8px] font-semibold bg-brand hover:bg-brand-hover disabled:opacity-40 disabled:pointer-events-none text-white text-xs transition flex items-center justify-center gap-1.5 flex-shrink-0"
             title="Submit Question"
           >
             <Send className="w-3.5 h-3.5" />
@@ -385,7 +385,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
 
         {/* Live Recording Pulse Banner */}
         {isRecording && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-[8px] text-xs font-semibold text-rose-700 dark:text-rose-300 animate-pulse">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-[8px] text-xs font-medium text-rose-700 dark:text-rose-300 animate-pulse">
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
             <span>Listening... SolvAm is transcribing your spoken question in real-time. Click mic to send.</span>
           </div>
@@ -401,7 +401,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
 
         {/* Contextual Quick Question Suggestions */}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs">
-          <span className="text-[#64748b] dark:text-[#94a3b8] text-[11px] font-medium mr-1">
+          <span className="text-ink-muted text-[11px] font-medium mr-1">
             Quick Inquiries:
           </span>
           <button
@@ -411,7 +411,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
               setQuestionInput(q);
               handleSubmitQuestion(q);
             }}
-            className="px-2.5 py-1 bg-white dark:bg-[#0b1120] hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-[#e2e8f0] dark:border-[#1e293b] text-[#1e3a8a] dark:text-[#93c5fd] rounded-[6px] transition text-[11px] font-medium"
+            className="px-2.5 py-1 bg-surface hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-line text-brand-ink rounded-[6px] transition text-[11px] font-medium"
           >
             Explain Step {stepNumber} Simply
           </button>
@@ -422,7 +422,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
               setQuestionInput(q);
               handleSubmitQuestion(q);
             }}
-            className="px-2.5 py-1 bg-white dark:bg-[#0b1120] hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-[#e2e8f0] dark:border-[#1e293b] text-[#1e3a8a] dark:text-[#93c5fd] rounded-[6px] transition text-[11px] font-medium"
+            className="px-2.5 py-1 bg-surface hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-line text-brand-ink rounded-[6px] transition text-[11px] font-medium"
           >
             Why These Numbers?
           </button>
@@ -433,7 +433,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
               setQuestionInput(q);
               handleSubmitQuestion(q);
             }}
-            className="px-2.5 py-1 bg-white dark:bg-[#0b1120] hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-[#e2e8f0] dark:border-[#1e293b] text-[#1e3a8a] dark:text-[#93c5fd] rounded-[6px] transition text-[11px] font-medium"
+            className="px-2.5 py-1 bg-surface hover:bg-[#e0f0fe] dark:hover:bg-[#1e3a8a]/40 border border-line text-brand-ink rounded-[6px] transition text-[11px] font-medium"
           >
             WAEC Marking Tip
           </button>
@@ -442,7 +442,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
 
       {/* Loading State */}
       {isLoading && (
-        <div className="p-3 bg-white dark:bg-[#0b1120] rounded-[8px] border border-[#e2e8f0] dark:border-[#1e293b] flex items-center justify-center gap-2.5 text-xs text-[#2563eb] dark:text-[#60a5fa] font-semibold">
+        <div className="p-3 bg-surface rounded-[8px] border border-line flex items-center justify-center gap-2.5 text-xs text-brand-fg font-semibold">
           <RefreshCw className="w-4 h-4 animate-spin" />
           <span>Professor SolvAm is analyzing your question for Step {stepNumber}...</span>
         </div>
@@ -450,9 +450,9 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
 
       {/* Professor SolvAm Response */}
       {responseAnswer && !isLoading && (
-        <div className="p-3.5 bg-white dark:bg-[#0b1120] rounded-[10px] border border-[#bfdbfe] dark:border-[#1e3a8a] space-y-2.5">
+        <div className="p-3.5 bg-surface rounded-[10px] border border-brand/20 space-y-2.5">
           <div className="flex items-center justify-between border-b border-[#e2e8f0]/80 dark:border-[#1e293b] pb-2">
-            <span className="text-xs font-bold text-[#1e3a8a] dark:text-[#93c5fd] uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-brand-ink uppercase tracking-wider flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Professor SolvAm Clarification:</span>
             </span>
@@ -462,7 +462,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
               <button
                 type="button"
                 onClick={handleStopAudio}
-                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold rounded-[6px] transition flex items-center gap-1 shadow-sm"
+                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-semibold rounded-[6px] transition flex items-center gap-1 shadow-card"
               >
                 <Square className="w-3 h-3" />
                 <span>Stop Audio</span>
@@ -479,27 +479,27 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
                   });
                   stopAudioRef.current = cancel;
                 }}
-                className="px-2.5 py-1 bg-[#dbeafe] dark:bg-[#1e3a8a]/50 hover:bg-[#bfdbfe] text-[#1e3a8a] dark:text-[#93c5fd] text-[10px] font-semibold rounded-[6px] transition flex items-center gap-1"
+                className="px-2.5 py-1 bg-brand-tint hover:bg-[#bfdbfe] text-brand-ink text-[10px] font-semibold rounded-[6px] transition flex items-center gap-1"
               >
-                <Volume2 className="w-3 h-3 text-[#2563eb] dark:text-[#60a5fa]" />
+                <Volume2 className="w-3 h-3 text-brand-fg" />
                 <span>Replay Audio</span>
               </button>
             )}
           </div>
 
           {askedQuestion && (
-            <div className="text-xs text-[#64748b] dark:text-[#94a3b8] italic border-l-2 border-[#2563eb] pl-2.5">
+            <div className="text-xs text-ink-muted italic border-l-2 border-brand pl-2.5">
               &ldquo;{askedQuestion}&rdquo;
             </div>
           )}
 
           <MathDisplay
             value={responseAnswer}
-            className="text-xs sm:text-sm text-[#0f172a] dark:text-[#f8fafc] leading-[1.6] font-medium"
+            className="text-xs sm:text-sm text-ink leading-[1.6] font-medium"
           />
 
           {waecTip && (
-            <div className="p-2.5 bg-[#dbeafe]/50 dark:bg-[#1e3a8a]/30 border border-[#bfdbfe]/60 dark:border-[#1e3a8a]/60 rounded-[8px] text-xs text-[#1e3a8a] dark:text-[#93c5fd] font-medium">
+            <div className="p-2.5 bg-[#dbeafe]/50 dark:bg-[#1e3a8a]/30 border border-[#bfdbfe]/60 dark:border-[#1e3a8a]/60 rounded-[8px] text-xs text-brand-ink font-medium">
               <MathDisplay value={waecTip} />
             </div>
           )}
@@ -508,7 +508,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1 bg-[#f1f5f9] dark:bg-[#1e293b] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] text-[#0f172a] dark:text-[#f8fafc] text-[11px] font-bold rounded-[6px] transition"
+              className="px-3 py-1 bg-[#f1f5f9] dark:bg-[#1e293b] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] text-ink text-[11px] font-semibold rounded-[6px] transition"
             >
               Done
             </button>
