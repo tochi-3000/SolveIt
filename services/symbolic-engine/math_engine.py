@@ -270,9 +270,89 @@ def solve_equation_symbolic(equation: str, solve_for: str = "x") -> Dict[str, An
     }
 
 
+def parse_step_structure(step_text: str, var_sym: sp.Symbol, solve_for: str = "x") -> Dict[str, Any]:
+    """Parses and classifies student working steps.
+    
+    Supports:
+    1. Implications: 'x + 3 = 0 \\implies x = -3' or 'x + 3 = 0 => x = -3'
+    2. Disjunctions: 'x = -3 or x = -2' or 'x = -3 \\quad \\text{or} \\quad x = -2'
+    3. Comma-separated roots: 'x = -3, x = -2'
+    4. Standard single polynomial equations or expressions.
+    """
+    s = step_text.strip()
+    s = re.sub(r'^\$\$|\$\$$', '', s).strip()
+    s = re.sub(r'^\$|\$$', '', s).strip()
+    s = re.sub(r'^\\\(|\\\)$', '', s).strip()
+
+    # 1. Implication check (e.g. "x + 3 = 0 \implies x = -3" or "x + 3 = 0 => x = -3")
+    imply_match = re.search(r'\\implies|=>|-->|\\to|\\rightarrow', s)
+    if imply_match:
+        parts = re.split(r'\\implies|=>|-->|\\to|\\rightarrow', s, maxsplit=1)
+        premise_str = parts[0].strip()
+        conclusion_str = parts[1].strip()
+        premise_expr = safe_sympify(premise_str)
+        conclusion_expr = safe_sympify(conclusion_str)
+        premise_roots = sp.solve(premise_expr, var_sym) if premise_expr.has(var_sym) else []
+        conclusion_roots = sp.solve(conclusion_expr, var_sym) if conclusion_expr.has(var_sym) else []
+        conc_latex = sp.latex(conclusion_roots[0]) if conclusion_roots else sp.latex(conclusion_expr)
+        return {
+            "type": "implication",
+            "premise_expr": premise_expr,
+            "conclusion_expr": conclusion_expr,
+            "premise_roots": premise_roots,
+            "conclusion_roots": conclusion_roots,
+            "all_roots": conclusion_roots or premise_roots,
+            "latex": f"{sp.latex(premise_expr)} = 0 \\implies {solve_for} = {conc_latex}"
+        }
+
+    # 2. Disjunction check (e.g. "x = -3 or x = -2" or "x = -3 \quad \text{or} \quad x = -2")
+    or_pattern = r'\s+(?:or|\\lor|\\text\{or\})\s+|\\quad\s*\\text\{or\}\s*\\quad'
+    if re.search(or_pattern, s, re.IGNORECASE):
+        clauses = re.split(or_pattern, s, flags=re.IGNORECASE)
+        roots = []
+        for c in clauses:
+            c = c.strip()
+            if c:
+                c_expr = safe_sympify(c)
+                if c_expr.has(var_sym):
+                    roots.extend(sp.solve(c_expr, var_sym))
+        return {
+            "type": "disjunction",
+            "roots": roots,
+            "latex": " \\quad \\text{or} \\quad ".join(f"{solve_for} = {sp.latex(r)}" for r in roots)
+        }
+
+    # 3. Comma-separated roots (e.g. "x = -3, x = -2")
+    if ',' in s:
+        clauses = [c.strip() for c in s.split(',') if c.strip()]
+        if len(clauses) >= 2 and all('=' in c for c in clauses):
+            roots = []
+            for c in clauses:
+                c_expr = safe_sympify(c)
+                if c_expr.has(var_sym):
+                    roots.extend(sp.solve(c_expr, var_sym))
+            return {
+                "type": "disjunction",
+                "roots": roots,
+                "latex": ", ".join(f"{solve_for} = {sp.latex(r)}" for r in roots)
+            }
+
+    # 4. Standard single equation or expression
+    expr = safe_sympify(s)
+    roots = sp.solve(expr, var_sym) if expr.has(var_sym) else []
+    return {
+        "type": "equation",
+        "expr": expr,
+        "roots": roots,
+        "latex": sp.latex(expr)
+    }
+
+
 def verify_steps_sequence(original_problem: str, steps: List[str], solve_for: str = "x") -> Dict[str, Any]:
     """Verifies a student's step-by-step handwritten work line-by-line.
     
+    Supports implications, disjunctions, multi-clause steps, and auto-detects
+    starting equations if the top problem was left desynchronized.
     Pinpoints the EXACT step where an error occurs and computes WAEC M1/A1 marks.
     """
     if not steps:
@@ -284,10 +364,28 @@ def verify_steps_sequence(original_problem: str, steps: List[str], solve_for: st
 
     try:
         base_expr = safe_sympify(original_problem)
-    except Exception as e:
+    except Exception:
         base_expr = None
 
+    # Step 1 Problem Sync Safeguard:
+    # If original_problem is the default starter placeholder ('3x^2 - 5x - 2 = 0' or empty),
+    # but the student typed a different valid equation on Step 1 (e.g. '(x+3)(x+2)=0' or 'x^2+5x+6=0'),
+    # adopt Step 1 as the reference equation!
+    norm_orig = original_problem.strip().replace(" ", "").replace("**", "^")
+    is_default_starter = norm_orig in ["3x^2-5x-2=0", "3x^2-5x-2", ""]
+    
+    if is_default_starter and steps:
+        try:
+            first_struct = parse_step_structure(steps[0], var, solve_for)
+            if first_struct["type"] == "equation" and first_struct["roots"]:
+                if base_expr is not None and sp.simplify(first_struct["expr"] - base_expr) != 0:
+                    base_expr = first_struct["expr"]
+        except Exception:
+            pass
+
+    problem_roots = set(sp.solve(base_expr, var)) if (base_expr is not None and base_expr.has(var)) else set()
     current_reference = base_expr
+    collected_roots = set()
     valid_count = 0
     waec_earned = 0
     waec_total = max(4, len(steps))
@@ -296,25 +394,82 @@ def verify_steps_sequence(original_problem: str, steps: List[str], solve_for: st
         step_valid = False
         error_msg = None
         mark = "M0"
+        feedback = None
+        step_latex = step_text
 
         try:
-            step_expr = safe_sympify(step_text)
-            
-            # Check equivalence with original or immediately prior step
-            if current_reference is not None:
-                # Difference between expressions should simplify to 0
-                diff = sp.simplify(step_expr - current_reference)
-                if diff == 0:
-                    step_valid = True
+            struct = parse_step_structure(step_text, var, solve_for)
+            step_type = struct["type"]
+
+            if step_type == "implication":
+                prem_roots = set(struct["premise_roots"])
+                conc_roots = set(struct["conclusion_roots"])
+                step_latex = struct.get("latex", step_text)
+                
+                # Check 1: Does conclusion follow from premise?
+                if prem_roots and conc_roots and prem_roots != conc_roots:
+                    step_valid = False
+                    error_msg = f"Implication error: solving {sp.latex(struct['premise_expr'])} = 0 yields {sp.latex(list(prem_roots)[0])}, not {sp.latex(list(conc_roots)[0])}."
+                # Check 2: Is the root part of the target problem's valid roots?
+                elif conc_roots and problem_roots and not conc_roots.issubset(problem_roots):
+                    step_valid = False
+                    error_msg = f"Root {sp.latex(list(conc_roots)[0])} is not a valid root of the equation."
                 else:
-                    # Also check if it's equivalent to solving for roots directly on final step
-                    # E.g. student writes x = 1/2 or x = -3
-                    original_roots = sp.solve(current_reference, var) if current_reference.has(var) else []
-                    step_roots = sp.solve(step_expr, var) if step_expr.has(var) else []
-                    if set(original_roots) == set(step_roots) and len(original_roots) > 0:
+                    step_valid = True
+                    target_roots = conc_roots or prem_roots
+                    collected_roots.update(target_roots)
+                    feedback = f"Valid root derivation: ${solve_for} = {sp.latex(list(target_roots)[0])}$."
+
+            elif step_type == "disjunction":
+                roots = set(struct["roots"])
+                step_latex = struct.get("latex", step_text)
+                if roots and problem_roots:
+                    if roots.issubset(problem_roots):
                         step_valid = True
-            else:
-                step_valid = True  # If original problem couldn't parse, evaluate step standalone
+                        collected_roots.update(roots)
+                        if roots == problem_roots:
+                            feedback = "Accurate final solution with all roots verified!"
+                        else:
+                            feedback = "Valid root milestone."
+                    else:
+                        step_valid = False
+                        invalid = roots - problem_roots
+                        error_msg = f"Stated root(s) {sp.latex(list(invalid))} are not solutions to the equation."
+                else:
+                    step_valid = True
+                    feedback = "Valid solution statement."
+
+            elif step_type == "equation":
+                step_expr = struct["expr"]
+                step_latex = sp.latex(step_expr)
+                
+                # Check 1: Algebraic difference simplification against prior step
+                if current_reference is not None:
+                    diff = sp.simplify(step_expr - current_reference)
+                    if diff == 0:
+                        step_valid = True
+                        current_reference = step_expr
+                        feedback = "Valid step: mathematically equivalent to the previous line."
+                    else:
+                        # Check 2: Equivalence against original base_expr
+                        if base_expr is not None and sp.simplify(step_expr - base_expr) == 0:
+                            step_valid = True
+                            current_reference = step_expr
+                            feedback = "Valid step: mathematically equivalent to the target equation."
+                        else:
+                            # Check 3: Does step represent a single root equation? e.g. x = -3 or x + 3 = 0
+                            step_roots = set(struct["roots"])
+                            if step_roots and problem_roots and step_roots.issubset(problem_roots):
+                                step_valid = True
+                                collected_roots.update(step_roots)
+                                feedback = f"Valid root milestone: ${solve_for} = {sp.latex(list(step_roots)[0])}$."
+                            elif step_roots and problem_roots == step_roots:
+                                step_valid = True
+                                collected_roots.update(step_roots)
+                                feedback = "Accurate final roots."
+                else:
+                    step_valid = True
+                    feedback = "Step accepted."
 
         except Exception as parse_err:
             step_valid = False
@@ -322,8 +477,10 @@ def verify_steps_sequence(original_problem: str, steps: List[str], solve_for: st
 
         if step_valid:
             valid_count += 1
-            # WAEC Rubric: First steps get M1 (Method), Final valid step gets A1 (Accuracy)
-            if idx == len(steps) - 1:
+            is_final_step = (idx == len(steps) - 1)
+            all_roots_found = bool(problem_roots and collected_roots >= problem_roots)
+            
+            if is_final_step or all_roots_found:
                 mark = "A1"
                 waec_earned += 1
             else:
@@ -338,10 +495,10 @@ def verify_steps_sequence(original_problem: str, steps: List[str], solve_for: st
         step_analyses.append({
             "step_index": idx + 1,
             "raw_text": step_text,
-            "latex": sp.latex(step_expr) if 'step_expr' in locals() and step_expr is not None else step_text,
+            "latex": step_latex,
             "is_mathematically_valid": step_valid,
             "waec_mark": mark,
-            "feedback": error_msg or ("Valid step" if idx < len(steps) - 1 else "Accurate final solution!")
+            "feedback": error_msg or feedback or ("Valid step" if idx < len(steps) - 1 else "Accurate final solution!")
         })
 
     is_all_valid = (valid_count == len(steps))
@@ -360,9 +517,9 @@ def verify_steps_sequence(original_problem: str, steps: List[str], solve_for: st
         "total_steps": len(steps),
         "valid_step_count": valid_count,
         "first_error_index": first_error_index,
-        "step_analyses": step_analyses,
         "waec_score_earned": waec_earned,
         "waec_score_total": waec_total,
+        "step_analyses": step_analyses,
         "pedagogical_summary": summary
     }
 

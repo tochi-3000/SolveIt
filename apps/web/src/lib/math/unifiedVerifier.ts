@@ -12,6 +12,7 @@
 import { VerifyStepsResponse, VerifyStepItem } from '@solvam/shared-types';
 import { parseArithmeticProgression, safeEvaluateArithmetic, ParsedAP } from './apUtils';
 import { verifyStudentSteps } from '@/lib/symbolicClient';
+import { cleanAndExtractJson } from '@/lib/ai/resilience';
 
 export interface VerifyOptions {
   solveFor?: string;
@@ -364,7 +365,22 @@ export async function verifyStudentWorking(
   // 1. If pure algebra polynomial, attempt SymPy first
   if (!isWordOrSequence) {
     try {
-      return await verifyStudentSteps(originalProblem, steps, solveFor);
+      const sympyRes = await verifyStudentSteps(originalProblem, steps, solveFor);
+      if (sympyRes && sympyRes.is_fully_correct) {
+        return sympyRes;
+      }
+      // If SymPy flagged any issue, let Meta Muse Spark 1.3 review as senior pedagogical examiner
+      if (metaApiKey && metaApiKey !== 'mock' && metaApiKey !== 'placeholder') {
+        try {
+          const llmRes = await gradeStepsWithMetaMuseLLM(metaApiKey, originalProblem, steps);
+          if (llmRes && llmRes.success) {
+            return llmRes;
+          }
+        } catch (llmErr) {
+          console.warn('Meta Muse LLM grading arbitrator failed, returning SymPy result:', llmErr);
+        }
+      }
+      return sympyRes;
     } catch (sympyErr) {
       console.warn('SymPy CAS solver bypassed or failed:', sympyErr);
     }
@@ -461,9 +477,9 @@ Return ONLY valid JSON:
         { role: 'user', content: 'Grade the student steps now and return JSON.' },
       ],
       temperature: 0.1,
-      max_tokens: 2500,
+      max_tokens: 3500, // Production Safeguard: Full budget for reasoning tokens
     }),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(30000), // Extended to 30s
   });
 
   if (!res.ok) throw new Error(`Meta API status ${res.status}`);
@@ -471,9 +487,7 @@ Return ONLY valid JSON:
   const rawContent = data.choices?.[0]?.message?.content;
   if (!rawContent) throw new Error('Empty LLM grading response');
 
-  const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('No JSON object found in response');
-  const parsed = JSON.parse(jsonMatch[0]);
+  const parsed = cleanAndExtractJson<any>(rawContent);
 
   const analyses: VerifyStepItem[] = Array.isArray(parsed.step_analyses)
     ? parsed.step_analyses.map((sa: any, idx: number) => ({
