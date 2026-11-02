@@ -7,6 +7,7 @@
  */
 
 import { createClient, Client } from '@libsql/client';
+import { nanoid } from 'nanoid';
 
 let dbInstance: Client | null = null;
 let isInitialized = false;
@@ -68,6 +69,27 @@ async function runSchemaMigrations(client: Client): Promise<void> {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(user_id) REFERENCES users(id)
     );
+  `);
+
+  // 4. Study & Practice History table
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS study_history (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      activity_type TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      raw_problem TEXT NOT NULL,
+      latex_equation TEXT,
+      score_earned INTEGER,
+      score_total INTEGER,
+      solution_payload TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  await client.execute(`
+    CREATE INDEX IF NOT EXISTS idx_study_history_user ON study_history(user_id, created_at DESC);
   `);
 }
 
@@ -356,4 +378,115 @@ export async function upsertAuthenticatedUser(
     is_guest: false,
     credits: 100,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Study & Practice History Helpers
+// ---------------------------------------------------------------------------
+
+export interface StudyHistoryRecord {
+  id: string;
+  user_id: string;
+  activity_type: 'learn' | 'practice';
+  topic: string;
+  raw_problem: string;
+  latex_equation?: string | null;
+  score_earned?: number | null;
+  score_total?: number | null;
+  solution_payload?: string | null; // Serialized JSON snapshot
+  created_at: string;
+}
+
+export async function createStudyHistoryRecord(
+  data: Omit<StudyHistoryRecord, 'id' | 'created_at'>
+): Promise<StudyHistoryRecord> {
+  await initDb();
+  const db = getDb();
+
+  const id = `hist_${nanoid(12)}`;
+  const now = new Date().toISOString();
+
+  await db.execute({
+    sql: `INSERT INTO study_history (
+      id, user_id, activity_type, topic, raw_problem, latex_equation, score_earned, score_total, solution_payload, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      data.user_id,
+      data.activity_type,
+      data.topic || 'General Mathematics',
+      data.raw_problem,
+      data.latex_equation || null,
+      data.score_earned !== undefined ? data.score_earned : null,
+      data.score_total !== undefined ? data.score_total : null,
+      data.solution_payload || null,
+      now,
+    ],
+  });
+
+  return {
+    id,
+    ...data,
+    created_at: now,
+  };
+}
+
+export async function getStudyHistoryForUser(
+  userId: string,
+  activityType?: 'learn' | 'practice',
+  limit: number = 50
+): Promise<StudyHistoryRecord[]> {
+  await initDb();
+  const db = getDb();
+
+  let sql = `SELECT id, user_id, activity_type, topic, raw_problem, latex_equation, score_earned, score_total, solution_payload, created_at
+             FROM study_history WHERE user_id = ?`;
+  const args: (string | number)[] = [userId];
+
+  if (activityType) {
+    sql += ` AND activity_type = ?`;
+    args.push(activityType);
+  }
+
+  sql += ` ORDER BY created_at DESC LIMIT ?`;
+  args.push(limit);
+
+  const res = await db.execute({ sql, args });
+
+  return res.rows.map((row) => ({
+    id: row.id as string,
+    user_id: row.user_id as string,
+    activity_type: row.activity_type as 'learn' | 'practice',
+    topic: row.topic as string,
+    raw_problem: row.raw_problem as string,
+    latex_equation: (row.latex_equation as string) || null,
+    score_earned: row.score_earned !== null ? Number(row.score_earned) : null,
+    score_total: row.score_total !== null ? Number(row.score_total) : null,
+    solution_payload: (row.solution_payload as string) || null,
+    created_at: row.created_at as string,
+  }));
+}
+
+export async function deleteStudyHistoryRecord(id: string, userId: string): Promise<boolean> {
+  await initDb();
+  const db = getDb();
+
+  const res = await db.execute({
+    sql: `DELETE FROM study_history WHERE id = ? AND user_id = ?`,
+    args: [id, userId],
+  });
+
+  return res.rowsAffected > 0;
+}
+
+export async function clearStudyHistoryForUser(userId: string): Promise<boolean> {
+  await initDb();
+  const db = getDb();
+
+  const res = await db.execute({
+    sql: `DELETE FROM study_history WHERE user_id = ?`,
+    args: [userId],
+  });
+
+  return res.rowsAffected > 0;
 }

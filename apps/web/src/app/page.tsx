@@ -8,6 +8,7 @@ import SamSegmentationCanvas from '@/components/SamSegmentationCanvas';
 import EquationVerificationModal from '@/components/EquationVerificationModal';
 import ScaffoldingSolutionView from '@/components/ScaffoldingSolutionView';
 import PracticeWorkspaceView from '@/components/PracticeWorkspaceView';
+import HistoryWorkspaceView from '@/components/HistoryWorkspaceView';
 import AuthProfileModal, { UserProfileData } from '@/components/AuthProfileModal';
 import { cropImageRegion } from '@/lib/image/crop';
 import { optimizeImage } from '@/lib/image/optimizer';
@@ -51,9 +52,10 @@ import {
   Monitor,
   BookOpen,
   ArrowRight,
+  History,
 } from 'lucide-react';
 
-type ActiveWorkspaceView = 'learn' | 'practice' | 'settings';
+type ActiveWorkspaceView = 'learn' | 'practice' | 'history' | 'settings';
 type ThemeMode = 'light' | 'dark' | 'system';
 
 interface AppPreferences {
@@ -271,6 +273,31 @@ export default function HomePage() {
     setIsMobileMenuOpen(false);
   };
 
+  // Non-blocking Study & Practice History Recorder
+  const recordStudyHistory = useCallback(
+    async (entry: {
+      activity_type: 'learn' | 'practice';
+      topic?: string;
+      raw_problem: string;
+      latex_equation?: string | null;
+      score_earned?: number | null;
+      score_total?: number | null;
+      solution_payload?: any;
+    }) => {
+      try {
+        await fetch('/api/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(entry),
+        });
+      } catch (err) {
+        // Non-blocking background log to prevent interrupting interactive workspace
+        console.warn('Failed to record study history:', err);
+      }
+    },
+    []
+  );
+
   const segmentExamImage = async (imageUri: string, sampleId?: string) => {
     setSamLoading(true);
     setActiveExamImage(imageUri);
@@ -317,6 +344,14 @@ export default function HomePage() {
         if (res.ok) {
           const data = await res.json();
           setHandwritingResult(data);
+          recordStudyHistory({
+            activity_type: 'practice',
+            topic: 'Red-Pen Handwriting Grader',
+            raw_problem: originalProblem,
+            latex_equation: originalProblem,
+            score_earned: typeof data.waecScoreEarned === 'number' ? data.waecScoreEarned : null,
+            score_total: typeof data.waecScoreTotal === 'number' ? data.waecScoreTotal : 10,
+          });
         }
       } catch (err) {
         console.error('Camera bridge practice grading error:', err);
@@ -388,7 +423,7 @@ export default function HomePage() {
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.solution) {
         setAiSolution(data.solution);
         setTelemetry(data.telemetry);
         if (userProfile) {
@@ -398,6 +433,13 @@ export default function HomePage() {
               : Math.max(0, userProfile.credits - 1);
           setUserProfile({ ...userProfile, credits: nextCredits });
         }
+        recordStudyHistory({
+          activity_type: 'learn',
+          topic: data.solution.topic || 'WAEC Mathematics Lesson',
+          raw_problem: verifiedEquation || museTestEquation,
+          latex_equation: data.solution.extractedLatex || verifiedEquation || museTestEquation,
+          solution_payload: data.solution,
+        });
       }
     } catch (e) {
       console.error('Multimodal solve failed:', e);
@@ -445,6 +487,14 @@ export default function HomePage() {
       const data = await res.json();
       if (data && !data.error) {
         setVerifyResult(data);
+        recordStudyHistory({
+          activity_type: 'practice',
+          topic: 'Interactive Practice Drill',
+          raw_problem: originalProblem,
+          latex_equation: originalProblem,
+          score_earned: typeof data.waec_score_earned === 'number' ? data.waec_score_earned : null,
+          score_total: typeof data.waec_score_total === 'number' ? data.waec_score_total : 10,
+        });
       }
     } catch (e) {
       console.error(e);
@@ -561,6 +611,13 @@ export default function HomePage() {
       badge: 'Drills',
       icon: Award,
       description: 'Practice twin problems and verify your steps line-by-line with SymPy',
+    },
+    {
+      id: 'history',
+      label: 'History',
+      badge: 'Archive',
+      icon: History,
+      description: 'Replay past learned lessons and review verified practice drills',
     },
     {
       id: 'settings',
@@ -1109,7 +1166,44 @@ export default function HomePage() {
               )}
 
               {/* =================================================================
-                  PAGE 3: SETTINGS (Appearance, Pedagogy, Dialect & Voice)
+                  PAGE 3: HISTORY (Personal Study Archive & 0ms Solution Replay)
+                 ================================================================= */}
+              {activeView === 'history' && (
+                <HistoryWorkspaceView
+                  onRevisitLesson={(solution, eq) => {
+                    setAiSolution(solution);
+                    setMuseTestEquation(eq);
+                    setActiveView('learn');
+                    if (typeof window !== 'undefined') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  onPracticeProblem={(prob) => {
+                    setOriginalProblem(prob);
+                    setStudentSteps(['', '', '']);
+                    setVerifyResult(null);
+                    setActiveView('practice');
+                    if (typeof window !== 'undefined') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  onNavigateToLearn={() => {
+                    setActiveView('learn');
+                    if (typeof window !== 'undefined') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  onNavigateToPractice={() => {
+                    setActiveView('practice');
+                    if (typeof window !== 'undefined') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                />
+              )}
+
+              {/* =================================================================
+                  PAGE 4: SETTINGS (Appearance, Pedagogy, Dialect & Voice)
                  ================================================================= */}
               {activeView === 'settings' && (
                 <div className="space-y-6 animate-fadeIn">

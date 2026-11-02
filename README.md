@@ -84,7 +84,7 @@ flowchart TD
         ClickableBoxes["Interactive Question Cards (Tap to Learn)"]
         RedPenCanvas["'Red-Pen' Graded Notebook with [M1] & [M0] Badges"]
         LineByLineTutor["Step-by-Step Breakdown with 'Ask Professor SolveAm' on Every Line"]
-        VoiceTutor["'Cause-First' Voice Responses (<35 words in English or Pidgin)"]
+        VoiceTutor["'Cause-First' Voice Responses (<50 words in English or Pidgin)"]
     end
 
     ExamPaper --> SAM & SparkVision
@@ -129,7 +129,7 @@ Every single feature in SolveAm was engineered intentionally, powered by a speci
 * **Powered by:** **Meta Muse Voice (`muse-voice`)** + **Meta Muse Spark 1.3 (`muse-spark-1.3`)**
 * **How it works:** A 2-model pipeline:
   1. **Meta Muse Voice** (`/v1/models/muse-voice/transcribe`): Transcribes spoken student inquiries with high resilience to West African accents and classroom background noise.
-  2. **Meta Muse Spark 1.3** (`/api/math/voice-question`): Implements our strict **"Cause-First" Cognitive Compression** rule. Sentence 1 must directly answer *"Why"* or *"How"* using the step's exact numbers, capped at 35 words at a Grade-7 reading level, with zero filler fluff.
+  2. **Meta Muse Spark 1.3** (`/api/math/voice-question`): Implements our strict **"Cause-First" Cognitive Compression** rule. Sentence 1 must directly answer *"Why"* or *"How"* using the step's exact numbers, capped at 50 words at a Grade-7 reading level, with zero filler fluff.
 
 ### 5. The "Red-Pen" Handwritten Paper Grader
 * **Powered by:** **Meta Muse Spark 1.3 Vision (`muse-spark-1.3`)** Spatial Handwriting Scanner
