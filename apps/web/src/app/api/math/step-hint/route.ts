@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseArithmeticProgression, safeEvaluateArithmetic, ParsedAP } from '@/lib/math/apUtils';
+import { cleanAndExtractJson } from '@/lib/ai/resilience';
 
 export type StepHintStage = 'not_started' | 'on_track' | 'needs_correction' | 'completed';
 
@@ -525,9 +526,9 @@ Output MUST be strictly valid JSON:
       model: 'muse-spark-1.3',
       messages: [{ role: 'system', content: systemPrompt }, ...userMessages],
       temperature: 0.1,
-      max_tokens: 600,
+      max_tokens: 3500, // Production Safeguard: Allow full budget for chain-of-thought reasoning tokens (~1800) + response JSON
     }),
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(30000), // Extended to 30s to allow deep multimodal chain-of-thought reasoning
   });
 
   if (!res.ok) throw new Error(`Meta Hint API HTTP ${res.status}`);
@@ -535,9 +536,7 @@ Output MUST be strictly valid JSON:
   const raw = data.choices?.[0]?.message?.content;
   if (!raw) throw new Error('Empty AI hint response');
 
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('No JSON object in response');
-  const parsed = JSON.parse(jsonMatch[0]);
+  const parsed = cleanAndExtractJson<any>(raw);
 
   return {
     success: true,
@@ -548,6 +547,127 @@ Output MUST be strictly valid JSON:
     nextActionPrompt: parsed.nextActionPrompt || 'Proceed to the next line.',
     targetLineIndex: typeof parsed.targetLineIndex === 'number' ? parsed.targetLineIndex : null,
     model: 'Meta Muse Spark 1.3 Socratic Tutor',
+  };
+}
+
+/**
+ * Domain-Aware Offline Fallback:
+ * If the student is working completely offline or without API connectivity,
+ * analyzes the mathematical domain (Trigonometry, Commercial Math, G.P., Calculus)
+ * to provide context-specific Socratic guidance instead of generic algebra copy.
+ */
+function generateDomainAwareFallback(problem: string, steps: string[]): StepHintResponse {
+  const pLower = problem.toLowerCase();
+  const stepCount = steps.length;
+  const progressPercent = Math.min(85, Math.max(20, stepCount * 25));
+
+  // 1. Trigonometry, Heights & Distances, Ladder, Angles
+  if (
+    pLower.includes('ladder') ||
+    pLower.includes('angle') ||
+    pLower.includes('degree') ||
+    pLower.includes('sin') ||
+    pLower.includes('cos') ||
+    pLower.includes('tan') ||
+    pLower.includes('hypotenuse') ||
+    pLower.includes('elevation') ||
+    pLower.includes('depression') ||
+    pLower.includes('bearing')
+  ) {
+    const lastStep = steps[steps.length - 1]?.toLowerCase() || '';
+    if (lastStep.includes('sin') || lastStep.includes('cos') || lastStep.includes('tan')) {
+      return {
+        success: true,
+        stage: 'on_track',
+        progressPercent,
+        headline: 'Substitute Known Lengths',
+        hintText: 'You stated your trigonometric ratio. Now substitute the given triangle lengths into the formula and solve for the unknown distance.',
+        nextActionPrompt: 'Cross-multiply to isolate the unknown side.',
+        targetLineIndex: stepCount,
+      };
+    }
+    return {
+      success: true,
+      stage: 'on_track',
+      progressPercent,
+      headline: 'Apply Trigonometric Ratio',
+      hintText: 'Set up the right-angled triangle ratio (e.g. $\\sin(\\theta) = \\frac{\\text{opp}}{\\text{hyp}}$ or $\\cos(\\theta) = \\frac{\\text{adj}}{\\text{hyp}}$) relating the angle and known side.',
+      nextActionPrompt: 'Write the trigonometric ratio equation on the next line.',
+      targetLineIndex: stepCount,
+    };
+  }
+
+  // 2. Commercial Math / Simple Interest
+  if (
+    pLower.includes('interest') ||
+    pLower.includes('principal') ||
+    pLower.includes('cost price') ||
+    pLower.includes('selling price') ||
+    pLower.includes('invest') ||
+    pLower.includes('per annum')
+  ) {
+    return {
+      success: true,
+      stage: 'on_track',
+      progressPercent,
+      headline: 'Next: Apply Interest Formula',
+      hintText: 'Ensure you have stated your Principal ($P$), Rate ($R$), and Time ($T$). Then apply $I = \\frac{P \\times R \\times T}{100}$ to compute the interest.',
+      nextActionPrompt: 'Substitute your values into the Simple Interest formula.',
+      targetLineIndex: stepCount,
+    };
+  }
+
+  // 3. Simultaneous Equations / Systems
+  if (
+    pLower.includes('simultaneous') ||
+    (problem.includes(' and ') && problem.includes('='))
+  ) {
+    return {
+      success: true,
+      stage: 'on_track',
+      progressPercent,
+      headline: 'Eliminate or Substitute',
+      hintText: 'Express one unknown variable in terms of the other from equation (1), then substitute it into equation (2).',
+      nextActionPrompt: 'Substitute the expression on Line ' + (stepCount + 1) + '.',
+      targetLineIndex: stepCount,
+    };
+  }
+
+  // 4. Geometric Progression (G.P.)
+  if (pLower.includes('geometric progression') || pLower.includes(' g.p') || /\bgp\b/i.test(pLower)) {
+    return {
+      success: true,
+      stage: 'on_track',
+      progressPercent,
+      headline: 'Apply G.P. Formula',
+      hintText: 'State the first term $a$ and common ratio $r = \\frac{T_2}{T_1}$. Then apply the $n$th term formula $T_n = a \\cdot r^{n-1}$.',
+      nextActionPrompt: 'Write $T_n = a \\cdot r^{n-1}$ with your values.',
+      targetLineIndex: stepCount,
+    };
+  }
+
+  // 5. Calculus / Differentiation
+  if (pLower.includes('dy/dx') || pLower.includes('derivative') || pLower.includes('differentiat')) {
+    return {
+      success: true,
+      stage: 'on_track',
+      progressPercent,
+      headline: 'Differentiate Term-by-Term',
+      hintText: 'Apply the power rule $\\frac{d}{dx}[ax^n] = n \\cdot ax^{n-1}$ to each polynomial term sequentially.',
+      nextActionPrompt: 'Write the differentiated polynomial on Line ' + (stepCount + 1) + '.',
+      targetLineIndex: stepCount,
+    };
+  }
+
+  // Standard Algebraic Fallback
+  return {
+    success: true,
+    stage: 'on_track',
+    progressPercent,
+    headline: 'Next Step Guidance',
+    hintText: `You have completed ${stepCount} step${stepCount > 1 ? 's' : ''}. Continue simplifying and isolating your unknown terms.`,
+    nextActionPrompt: 'Enter your next working step on the pad.',
+    targetLineIndex: stepCount,
   };
 }
 
@@ -625,17 +745,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      stage: 'on_track',
-      progressPercent: Math.min(80, nonEmptySteps.length * 30),
-      headline: 'Next Step Guidance',
-      hintText: `You have completed ${nonEmptySteps.length} step${
-        nonEmptySteps.length > 1 ? 's' : ''
-      }. Continue isolating your unknown variables towards the final answer.`,
-      nextActionPrompt: 'Enter your next working step on the pad.',
-      targetLineIndex: nonEmptySteps.length,
-    });
+    // Domain-Aware Fallback if offline or AI call unavailable
+    const fallbackHint = generateDomainAwareFallback(originalProblem, nonEmptySteps);
+    return NextResponse.json(fallbackHint);
   } catch (err: any) {
     console.error('Step hint endpoint error:', err);
     return NextResponse.json(
