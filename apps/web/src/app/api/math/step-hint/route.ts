@@ -693,6 +693,35 @@ export async function POST(req: NextRequest) {
     const nonEmptySteps = studentSteps.map((s) => s.trim()).filter(Boolean);
     const hasCanvasInk = Boolean(canvasImageBase64 && canvasImageBase64.startsWith('data:image/'));
 
+    // =========================================================================
+    // 1. PRIMARY UNIFIED ENGINE: Meta Muse Spark 1.3 Socratic Tutor
+    // Orchestrates hints across ALL mathematics (linear, quadratic, AP/GP, trig,
+    // word problems, calculus, and Light Pen drawings). Evaluates progress,
+    // detects intermediate milestones, pinpoint line errors, and celebrates completion.
+    // =========================================================================
+    const metaApiKey = process.env.META_API_KEY;
+    if (metaApiKey && metaApiKey !== 'mock' && metaApiKey !== 'placeholder') {
+      try {
+        const aiHint = await callMetaMuseForHint(
+          metaApiKey,
+          originalProblem,
+          nonEmptySteps,
+          canvasImageBase64
+        );
+        return NextResponse.json(aiHint);
+      } catch (aiErr) {
+        console.warn(
+          '[Step Hint] Meta Muse Spark 1.3 hint call failed, activating graceful offline fallback:',
+          aiErr instanceof Error ? aiErr.message : aiErr
+        );
+      }
+    }
+
+    // =========================================================================
+    // 2. AIR-GAPPED / OFFLINE FALLBACK ENGINE
+    // Deterministic rules activated only when working offline without internet/API keys.
+    // =========================================================================
+
     // Check if problem matches simple linear equation (e.g. 4x + 10 = 16)
     const linear = parseLinearEquation(originalProblem);
     if (linear && !hasCanvasInk) {
@@ -716,23 +745,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(hint);
     }
 
-    // LLM Fallback (or when canvas drawing is provided)
-    const metaApiKey = process.env.META_API_KEY;
-    if (metaApiKey && metaApiKey !== 'mock' && metaApiKey !== 'placeholder') {
-      try {
-        const aiHint = await callMetaMuseForHint(
-          metaApiKey,
-          originalProblem,
-          nonEmptySteps,
-          canvasImageBase64
-        );
-        return NextResponse.json(aiHint);
-      } catch (aiErr) {
-        console.warn('Meta Muse Socratic hint fallback triggered:', aiErr);
-      }
-    }
-
-    // Universal Fallback if no specific pattern matched
+    // Empty canvas start hint
     if (nonEmptySteps.length === 0 && !hasCanvasInk) {
       return NextResponse.json({
         success: true,
