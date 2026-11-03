@@ -47,7 +47,7 @@ function CaptureContent() {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_DIM = 1280;
+        const MAX_DIM = 1200;
         let width = img.width;
         let height = img.height;
 
@@ -69,7 +69,8 @@ function CaptureContent() {
         }
 
         ctx.drawImage(img, 0, 0, width, height);
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.78);
+        // Compact yet crisp 0.72 JPEG keeps mobile payload ~180-250KB for sub-second uploads
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
         setPhotoPreview(compressedBase64);
 
         uploadToDesktop(compressedBase64);
@@ -90,7 +91,14 @@ function CaptureContent() {
   const uploadToDesktop = async (base64Data: string, attempt = 1) => {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      // Robust 60s timeout for mobile Wi-Fi / hotspot latency
+      const timeoutId = setTimeout(() => {
+        try {
+          controller.abort(new DOMException('Mobile beaming timed out after 60s', 'TimeoutError'));
+        } catch (_) {
+          controller.abort();
+        }
+      }, 60000);
 
       const res = await fetch(`/api/session/${sessionId}/upload`, {
         method: 'POST',
@@ -113,13 +121,15 @@ function CaptureContent() {
         // Automatic single retry on transient mobile Wi-Fi hiccup
         return uploadToDesktop(base64Data, attempt + 1);
       }
-      const isTimeout = err instanceof DOMException && err.name === 'AbortError';
+      const isTimeout =
+        (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError')) ||
+        (err instanceof Error && err.name === 'AbortError');
       const msg = isTimeout
-        ? 'Connection timed out while beaming. Ensure your phone and laptop are still on the same Wi-Fi network, then tap Retry.'
+        ? 'Connection timed out while beaming. Ensure your phone and laptop are on the same Wi-Fi network or hotspot, then tap Retry.'
         : err instanceof Error
         ? err.message
         : 'Failed to beam photo to computer';
-      console.error(err);
+      console.warn('[CameraBridge Phone Lens]:', err);
       setError(msg);
       setUploading(false);
     }
@@ -150,9 +160,26 @@ function CaptureContent() {
       {/* Main View Area */}
       <div className="my-8 flex flex-col items-center justify-center">
         {error && (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm mb-6 w-full">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <span>{error}</span>
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-2.5 text-rose-700 text-sm mb-6 w-full shadow-sm">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+              <span className="font-semibold text-xs text-rose-800">Connection Notice</span>
+            </div>
+            <p className="text-xs leading-relaxed text-rose-700">{error}</p>
+            {photoPreview && !uploading && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setUploading(true);
+                  uploadToDesktop(photoPreview);
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Tap to Retry Beaming Photo</span>
+              </button>
+            )}
           </div>
         )}
 

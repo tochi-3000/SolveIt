@@ -43,7 +43,7 @@ interface PracticeWorkspaceViewProps {
   onVerifySteps: (canvasImageBase64?: string | null, inputMode?: CanvasInputMode) => void;
   onResetCorrectSteps: () => void;
   onInjectMistake: () => void;
-  handwritingResult: GradeHandwritingResponse;
+  handwritingResult: GradeHandwritingResponse | null;
   handwritingLoading: boolean;
   onLoadHandwritingSample: (sampleId: string) => void;
   latestLearnedSolution: PedagogicalSolution | null;
@@ -202,6 +202,34 @@ export const PracticeWorkspaceView: React.FC<PracticeWorkspaceViewProps> = ({
   const [uploadedImageUri, setUploadedImageUri] = useState<string | null>(null);
   const [uploadGradingLoading, setUploadGradingLoading] = useState<boolean>(false);
   const [uploadGradingResult, setUploadGradingResult] = useState<GradeHandwritingResponse | null>(null);
+
+  // Synchronize incoming handwriting grading from parent / Camera Bridge
+  useEffect(() => {
+    if (handwritingLoading) {
+      setUploadGradingLoading(true);
+      setActiveWorkspaceTab('upload');
+      const menuEl = document.getElementById('practice-workspace-menu');
+      if (menuEl) {
+        menuEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else {
+      setUploadGradingLoading(false);
+    }
+  }, [handwritingLoading]);
+
+  useEffect(() => {
+    if (handwritingResult && handwritingResult.lines && handwritingResult.lines.length > 0) {
+      setUploadGradingResult(handwritingResult);
+      if (handwritingResult.imageUrl) {
+        setUploadedImageUri(handwritingResult.imageUrl);
+      }
+      setActiveWorkspaceTab('upload');
+      const menuEl = document.getElementById('practice-workspace-menu');
+      if (menuEl) {
+        menuEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [handwritingResult]);
 
   // Handle Timer Counting
   useEffect(() => {

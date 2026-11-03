@@ -131,24 +131,8 @@ export default function HomePage() {
   const [verifyResult, setVerifyResult] = useState<VerifyStepsResponse | null>(null);
   const [verifyLoading, setVerifyLoading] = useState<boolean>(false);
 
-  // Red-Pen Handwritten Grader State
-  const [handwritingResult, setHandwritingResult] = useState<GradeHandwritingResponse>(() => {
-    const fixture = getFlawedStudentNotebookFixture();
-    return {
-      success: true,
-      model: 'Meta Muse Spark 1.3 & Deterministic SymPy CAS',
-      isFullyCorrect: fixture.isFullyCorrect,
-      totalLines: fixture.lines.length,
-      validLineCount: 1,
-      firstErrorIndex: 2,
-      waecScoreEarned: fixture.waecScoreEarned,
-      waecScoreTotal: fixture.waecScoreTotal,
-      lines: fixture.lines,
-      pedagogicalSummary: fixture.pedagogicalSummary,
-      imageUrl: fixture.svgDataUri,
-      durationMs: 42,
-    };
-  });
+  // Red-Pen Handwritten Grader State (Null until user beams or uploads a paper or loads a sample)
+  const [handwritingResult, setHandwritingResult] = useState<GradeHandwritingResponse | null>(null);
   const [handwritingLoading, setHandwritingLoading] = useState<boolean>(false);
 
   // Apply theme mode to <html> element and keep resolvedDark synchronized
@@ -302,6 +286,9 @@ export default function HomePage() {
     setSamLoading(true);
     setActiveExamImage(imageUri);
     setActiveView('learn');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
     try {
       const res = await fetch('/api/math/segment', {
         method: 'POST',
@@ -343,7 +330,12 @@ export default function HomePage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setHandwritingResult(data);
+          // Ensure beamed photo is bound directly to imageUrl so student's paper renders on the canvas
+          const enhanced = {
+            ...data,
+            imageUrl: data.imageUrl || base64Image,
+          };
+          setHandwritingResult(enhanced);
           recordStudyHistory({
             activity_type: 'practice',
             topic: 'Red-Pen Handwriting Grader',
